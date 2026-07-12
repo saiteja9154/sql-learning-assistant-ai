@@ -1,0 +1,26 @@
+# Render Blueprint Configuration for SQLSense AI Backend
+services:
+  - type: web
+    name: sqlsense-ai-backend
+    env: python
+    region: oregon # default region
+    plan: free # free tier suitable for internship demonstrations
+    
+    # We navigate to the backend folder, install dependencies, and build the vector database
+    buildCommand: |
+      cd backend
+      pip install -r requirements.txt
+      python verify_rag.py
+      
+    # Starts the FastAPI application binding it to Render's dynamic PORT
+    startCommand: |
+      cd backend
+      uvicorn app.main:app --host 0.0.0.0 --port $PORT
+      
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: true # Prompts the developer to insert their Gemini API Key in the Render UI
+      - key: PORT
+        value: 8000
+      - key: HOST
+        value: 0.0.0.0
