@@ -1,36 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import { X, Cpu, Database, BookOpen, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getApiUrl } from '../apiConfig';
+import API_URL from '../apiConfig';
 
 export default function AboutModal({ isOpen, onClose }) {
   const [topics, setTopics] = useState([]);
   
   useEffect(() => {
     if (isOpen) {
-      getApiUrl().then(apiUrl => {
-        fetch(`${apiUrl}/about`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.supported_topics) {
-              setTopics(data.supported_topics);
-            }
-          })
-          .catch(err => {
-            // fallback if backend not running yet
-            setTopics([
-              "Select", "Where", "Group By", "Having", "Inner Join", "Left Join", 
-              "Self Join", "Subqueries", "CTE", "Window Functions", "Normalization",
-              "Indexes", "Transactions", "Stored Procedures", "Triggers"
-            ]);
-          });
-      }).catch(err => {
-        setTopics([
-          "Select", "Where", "Group By", "Having", "Inner Join", "Left Join", 
-          "Self Join", "Subqueries", "CTE", "Window Functions", "Normalization",
-          "Indexes", "Transactions", "Stored Procedures", "Triggers"
-        ]);
-      });
+      fetch(`${API_URL}/about`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.supported_topics) {
+            setTopics(data.supported_topics);
+          }
+        })
+        .catch(err => {
+          // fallback if backend not running yet
+          setTopics([
+            "Select", "Where", "Group By", "Having", "Inner Join", "Left Join", 
+            "Self Join", "Subqueries", "CTE", "Window Functions", "Normalization",
+            "Indexes", "Transactions", "Stored Procedures", "Triggers"
+          ]);
+        });
     }
   }, [isOpen]);
 

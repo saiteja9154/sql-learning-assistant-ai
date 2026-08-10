@@ -12,7 +12,7 @@ import Sidebar from './components/Sidebar';
 import FormatterModal from './components/FormatterModal';
 import QuizModal from './components/QuizModal';
 import PracticeModal from './components/PracticeModal';
-import { getApiUrl } from './apiConfig';
+import API_URL from './apiConfig';
 
 export default function App() {
   const [messages, setMessages] = useState([]);
@@ -97,8 +97,7 @@ export default function App() {
     setIsLoading(true);
 
     try {
-      const apiUrl = await getApiUrl();
-      const response = await fetch(`${apiUrl}/chat`, {
+      const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
