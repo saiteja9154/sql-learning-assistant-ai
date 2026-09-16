@@ -1,13 +1,13 @@
 import os
 import sys
 import logging
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 
 from app.config import settings
-from app.schemas import ChatRequest, ChatResponse, AboutResponse
+from app.schemas import ChatRequest, ChatResponse, AboutResponse, QuizResponse
 from app.services.sql_engine import get_sql_engine
 
 # Configure logging
@@ -89,6 +89,28 @@ def chat_endpoint(request: ChatRequest):
         context_used=source
     )
 
+@app.get("/quiz", response_model=QuizResponse, tags=["Quiz"])
+def get_quiz_questions(difficulty: str = Query("beginner", description="Difficulty level: beginner, intermediate, advanced")):
+    """
+    Returns curated SQL quiz questions filtered by difficulty.
+    Validates that difficulty is one of: beginner, intermediate, advanced.
+    """
+    diff_lower = difficulty.lower().strip()
+    valid_difficulties = ["beginner", "intermediate", "advanced"]
+    
+    if diff_lower not in valid_difficulties:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid difficulty '{difficulty}'. Supported difficulties are: {', '.join(valid_difficulties)}."
+        )
+        
+    questions = sql_engine.get_quiz_questions(diff_lower)
+    return QuizResponse(
+        difficulty=diff_lower,
+        count=len(questions),
+        questions=questions
+    )
+
 # Static file serving for React production build (frontend/dist)
 dist_dir = settings.frontend_dist_dir
 assets_dir = os.path.join(dist_dir, "assets")
@@ -103,7 +125,7 @@ async def serve_react_app(full_path: str):
     Serves the React frontend SPA build for any non-API route.
     """
     # Exclude API endpoints and OpenAPI documentation
-    if full_path in ("health", "about", "chat", "docs", "openapi.json", "redoc"):
+    if full_path in ("health", "about", "chat", "quiz", "docs", "openapi.json", "redoc"):
         raise HTTPException(status_code=404, detail="Endpoint not found")
         
     # Check if a specific file exists in dist (e.g., favicon.ico, vite.svg)
