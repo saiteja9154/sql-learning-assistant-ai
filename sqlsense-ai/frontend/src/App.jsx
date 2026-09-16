@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Send, Sparkles, Download, Code, Award, Terminal, LayoutList } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -7,7 +7,7 @@ import ChatWindow from './components/ChatWindow';
 import SuggestedPrompts from './components/SuggestedPrompts';
 import AboutModal from './components/AboutModal';
 
-// Import New Polished Components
+// Components
 import Sidebar from './components/Sidebar';
 import FormatterModal from './components/FormatterModal';
 import QuizModal from './components/QuizModal';
@@ -18,14 +18,18 @@ export default function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
 
-  // New Polished States
+  // States
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recentQuestions, setRecentQuestions] = useState([]);
   const [activeModal, setActiveModal] = useState(null); // 'formatter' | 'quiz' | 'practice' | null
   const [themeMode, setThemeMode] = useState('indigo'); // 'indigo' | 'slate'
+
+  // Ref to hold any running stream interval for clean cancellation
+  const streamIntervalRef = useRef(null);
 
   // Load recent questions from LocalStorage on mount
   useEffect(() => {
@@ -37,6 +41,15 @@ export default function App() {
         console.error("Failed to parse recent questions", e);
       }
     }
+  }, []);
+
+  // Cleanup stream on unmount
+  useEffect(() => {
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current);
+      }
+    };
   }, []);
 
   // Keyboard Shortcuts Hook
@@ -77,24 +90,34 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleShortcuts);
   }, []);
 
+  const isGenerating = isLoading || isStreaming;
+
   const handleSendMessage = async (textToSend) => {
     const query = textToSend.trim();
-    if (!query) return;
+    if (!query || isGenerating) return;
 
     setErrorMessage(null);
+
+    // Cancel any previous active streaming timer
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
 
     // Update recent queries lists
     const updatedRecents = [query, ...recentQuestions.filter(q => q !== query)].slice(0, 8);
     setRecentQuestions(updatedRecents);
     localStorage.setItem('sqlsense_recent_queries', JSON.stringify(updatedRecents));
 
-    // Create user message
-    const userMessage = { role: 'user', content: query };
-    const updatedMessages = [...messages, userMessage];
+    // 1. Create and render user message immediately with a unique ID
+    const userMsgId = 'user-' + Date.now();
+    const userMessage = { id: userMsgId, role: 'user', content: query };
 
     setInput('');
-    setMessages(updatedMessages);
+    setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+
+    const startTime = Date.now();
 
     try {
       const response = await fetch(`${API_URL}/chat`, {
@@ -110,19 +133,81 @@ export default function App() {
       }
 
       const data = await response.json();
-      
+      const fullReply = data.reply || "No response generated.";
+
+      // 2. Ensure a short, natural thinking pause (350ms min) for realistic AI interaction
+      const elapsed = Date.now() - startTime;
+      const minThinkingTime = 380;
+      if (elapsed < minThinkingTime) {
+        await new Promise((resolve) => setTimeout(resolve, minThinkingTime - elapsed));
+      }
+
+      // 3. Transition from Thinking to Streaming/Typing reveal
+      setIsLoading(false);
+      setIsStreaming(true);
+
+      const assistantMsgId = 'assistant-' + Date.now();
+
+      // Append assistant message container with empty initial content
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: data.reply },
+        { id: assistantMsgId, role: 'assistant', content: '', isStreaming: true },
       ]);
+
+      // 4. Adaptive Progressive Reveal
+      // Balances smooth reading speed with instant responsive feel:
+      // Short response: ~3 chars per 16ms
+      // Medium response: ~8 chars per 16ms
+      // Long response: ~18 chars per 16ms
+      const len = fullReply.length;
+      const chunkSize = len > 1200 ? 20 : len > 600 ? 10 : len > 200 ? 5 : 3;
+      const tickInterval = 16;
+      let currentIndex = 0;
+
+      await new Promise((resolve) => {
+        streamIntervalRef.current = setInterval(() => {
+          currentIndex += chunkSize;
+
+          if (currentIndex >= fullReply.length) {
+            currentIndex = fullReply.length;
+            clearInterval(streamIntervalRef.current);
+            streamIntervalRef.current = null;
+
+            // Finalize completed message
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMsgId
+                  ? { ...msg, content: fullReply, isStreaming: false }
+                  : msg
+              )
+            );
+            setIsStreaming(false);
+            resolve();
+          } else {
+            const partialText = fullReply.slice(0, currentIndex);
+            setMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === assistantMsgId
+                  ? { ...msg, content: partialText, isStreaming: true }
+                  : msg
+              )
+            );
+          }
+        }, tickInterval);
+      });
+
     } catch (error) {
       console.error('Failed to query backend:', error);
       setErrorMessage("Could not connect to backend server.");
       
-      // Append fallback warning message
+      setIsLoading(false);
+      setIsStreaming(false);
+
+      // Append clean error message
       setMessages((prev) => [
         ...prev,
         { 
+          id: 'error-' + Date.now(),
           role: 'assistant', 
           content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server to process your query.\n\n* **Is the FastAPI backend running?** Verify that the server is running on the expected host/port.\n* **Network status:** Check your browser connection.\n\nPlease refresh or try again.` 
         },
@@ -140,12 +225,18 @@ export default function App() {
   };
 
   const handleClearChat = () => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
     setMessages([]);
     setInput('');
     setErrorMessage(null);
+    setIsLoading(false);
+    setIsStreaming(false);
   };
 
-  // BONUS: Download Chat Log Utility
+  // Download Chat Log Utility
   const handleDownloadChat = () => {
     if (messages.length === 0) return;
     
@@ -217,8 +308,12 @@ export default function App() {
             </div>
           ) : (
             /* Chat window message logs */
-            <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 border-x border-white/[0.02] max-w-5xl mx-auto w-full">
-              <ChatWindow messages={messages} isLoading={isLoading} />
+            <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 border-x border-white/[0.02] max-w-5xl mx-auto w-full overflow-hidden">
+              <ChatWindow 
+                messages={messages} 
+                isLoading={isLoading} 
+                isStreaming={isStreaming} 
+              />
             </div>
           )}
 
@@ -227,7 +322,7 @@ export default function App() {
             <div className="max-w-4xl mx-auto w-full px-4 flex flex-col">
               
               {/* Floating Suggested Prompt Chips */}
-              {messages.length > 0 && !isLoading && (
+              {messages.length > 0 && !isGenerating && (
                 <SuggestedPrompts onSelectPrompt={handleSendMessage} />
               )}
 
@@ -240,17 +335,21 @@ export default function App() {
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder="Ask a SQL question (e.g., 'What is a composite primary key?' or 'Write a self join query')..."
+                    placeholder={
+                      isGenerating
+                        ? "SQLSense AI is responding..."
+                        : "Ask a SQL question (e.g., 'What is a composite primary key?' or 'Write a self join query')..."
+                    }
                     rows={2}
-                    disabled={isLoading}
-                    className="flex-1 bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none px-4 py-3 text-slate-100 placeholder-slate-500 resize-none font-sans text-sm outline-none"
+                    disabled={isGenerating}
+                    className="flex-1 bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none px-4 py-3 text-slate-100 placeholder-slate-500 resize-none font-sans text-sm outline-none disabled:opacity-60"
                   />
 
                   {/* Actions Bar */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 px-4 py-2.5 sm:py-0 border-t sm:border-t-0 border-white/5">
                     {/* Log Downloads and shortcuts descriptors */}
                     <div className="flex items-center gap-2">
-                      {messages.length > 0 && (
+                      {messages.length > 0 && !isGenerating && (
                         <button
                           onClick={handleDownloadChat}
                           className="p-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-colors"
@@ -264,15 +363,15 @@ export default function App() {
                     {/* Submit Send Button */}
                     <button
                       onClick={() => handleSendMessage(input)}
-                      disabled={isLoading || !input.trim()}
+                      disabled={isGenerating || !input.trim()}
                       className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition-all duration-200 ${
-                        input.trim() && !isLoading
+                        input.trim() && !isGenerating
                           ? 'bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple active:scale-95 cursor-pointer'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
+                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 opacity-70'
                       }`}
                     >
-                      <span>Send</span>
-                      <Send size={12} />
+                      <span>{isStreaming ? 'Responding...' : isLoading ? 'Thinking...' : 'Send'}</span>
+                      <Send size={12} className={isGenerating ? 'animate-pulse' : ''} />
                     </button>
                   </div>
                 </div>

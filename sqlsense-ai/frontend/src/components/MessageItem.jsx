@@ -118,6 +118,9 @@ export default function MessageItem({ message }) {
             <ReactMarkdown components={markdownComponents}>
               {message.content}
             </ReactMarkdown>
+            {message.isStreaming && (
+              <span className="inline-block w-2 h-4 ml-1.5 bg-gradient-to-b from-brand-purple to-brand-blue animate-pulse rounded-xs align-middle shadow-glow-purple" />
+            )}
           </div>
         </div>
 
