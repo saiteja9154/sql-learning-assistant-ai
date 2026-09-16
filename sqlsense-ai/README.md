@@ -100,15 +100,27 @@ Open [http://localhost:8000](http://localhost:8000) to access the complete appli
 
 ## 🌐 Deploy to Render
 
+### Option A: Using Render Blueprint (Recommended)
+1. Connect your GitHub repository to [Render](https://render.com).
+2. Create a **Blueprint Instance**. Render will automatically detect `render.yaml` in the repository root.
+3. Click **Apply** to deploy!
+
+### Option B: Manual Web Service Setup
 1. Connect your GitHub repository to [Render](https://render.com).
 2. Create a new **Web Service**.
-3. Set **Runtime** to `Python 3`.
-4. **Build Command**:
+3. Set **Root Directory** to:
+   ```text
+   sqlsense-ai
+   ```
+4. Set **Runtime** to `Python 3` (Python 3.12).
+5. Set **Build Command**:
    ```bash
    npm --prefix frontend install && npm --prefix frontend run build && pip install -r backend/requirements.txt
    ```
-5. **Start Command**:
+6. Set **Start Command**:
    ```bash
    cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
    ```
-6. **Environment Variables**: None required!
+7. **Environment Variables**:
+   * `PYTHON_VERSION`: `3.12.8`
+

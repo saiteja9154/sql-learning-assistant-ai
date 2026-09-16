@@ -2,12 +2,13 @@
 services:
   - type: web
     name: sqlsense-ai
-    env: python
+    runtime: python
+    rootDir: sqlsense-ai
     region: oregon
     plan: free
     
     # 1. Install frontend npm dependencies & compile React production build
-    # 2. Install minimal Python backend dependencies
+    # 2. Install Python backend dependencies
     buildCommand: |
       npm --prefix frontend install
       npm --prefix frontend run build
@@ -19,7 +20,7 @@ services:
       uvicorn app.main:app --host 0.0.0.0 --port $PORT
       
     envVars:
-      - key: PORT
-        value: 8000
+      - key: PYTHON_VERSION
+        value: 3.12.8
       - key: HOST
         value: 0.0.0.0

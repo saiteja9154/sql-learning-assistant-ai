@@ -12,43 +12,35 @@ The backend application is managed inside the `backend/` directory.
 backend/
 ├── app/
 │   ├── __init__.py
-│   ├── config.py          # App settings & environment loaders
-│   ├── main.py            # FastAPI main application & CORS routes
-│   └── schemas.py         # Request and Response validation schemas
-├── db/
-│   └── chroma/            # Persistent ChromaDB vector index directories
-├── rag/
-│   ├── __init__.py
-│   ├── loader.py          # Document loader utilizing DirectoryLoader
-│   ├── splitter.py        # Text chunk splitter (RecursiveCharacterTextSplitter)
-│   ├── embeddings.py      # HuggingFace Embeddings initialization
-│   ├── vectordb.py        # Database creation and mount managers
-│   ├── retriever.py       # Queries vectors similarity database
-│   ├── prompt.py          # Template formatting
-│   ├── chain.py           # Ingestion pipelines and Gemini orchestration
-│   └── chat.py            # Intercepts REST routes, formats replies & sources
-├── requirements.txt       # Backend dependencies
-└── verify_rag.py          # Verification script for index seeding
+│   ├── config.py          # App settings & directory path resolvers
+│   ├── main.py            # FastAPI main application, CORS & SPA static routes
+│   ├── schemas.py         # Request and Response Pydantic schemas
+│   └── services/
+│       ├── __init__.py
+│       ├── sql_engine.py  # Local SQL Knowledge & matching engine
+│       └── sql_topics.py  # SQL topic catalogs & quiz question banks
+├── requirements.txt       # Backend dependencies (FastAPI, Uvicorn, Pydantic)
+└── .env.example           # Example environment file
 ```
 
 ---
 
 ## ⚙️ App Configurations & Setup
 
-* **Framework**: FastAPI + Uvicorn server running on `http://localhost:8000`.
+* **Framework**: FastAPI + Uvicorn server running on `http://localhost:8000` (or `$PORT` on Render).
 * **Configuration manager**: `pydantic-settings` constructs system configurations.
-  * Reads `.env` from the backend directory.
-  * Environment variables required: `GEMINI_API_KEY`, `PORT`, `HOST`.
-* **CORS Policy**: Configured in `main.py` allowing access requests from any origin (`*`) to facilitate Vite's development server port queries (`http://localhost:5173`).
+  * Reads `.env` from the backend directory (or injected environment variables).
+  * Optional Environment variables: `PORT` (defaults to 8000), `HOST` (defaults to 0.0.0.0).
+  * No external API keys (OpenAI / Gemini) required.
+* **CORS Policy**: Configured in `main.py` allowing access requests from any origin (`*`) to facilitate Vite development server queries (`http://localhost:5173`).
+* **SPA Serving**: In production, `main.py` automatically mounts and serves the React build output (`frontend/dist`) on root routes.
 
 ---
 
-## 📡 Chat Endpoint Processing
+## 📡 Endpoints Overview
 
-When requests hit the `POST /chat` endpoint:
-1. **Pydantic Validation**: Checks incoming request payloads against the `ChatRequest` model.
-2. **Path Resolution**: Dynamically appends backend paths to Python's system path, preventing routing failures when run outside root folders.
-3. **Ingestion Checks**: Checks if Chroma database has cached files under `backend/db/chroma/`. If not, triggers the RAG ingestion pipeline (loading and parsing markdown files under `knowledge/`).
-4. **Context Retrieval**: Queries Chroma using the user's latest message, extracting the top 3 matching text chunks.
-5. **Generation**: Submits context and system prompt instructions along with message histories to the `gemini-1.5-flash` model.
-6. **Sources & Output Formatter**: Pulls document source metadata, matches them, and compiles final answers.
+1. **`GET /health`**: Returns system health, loaded topics count, and keyless mode status.
+2. **`GET /about`**: Returns application metadata and the list of supported SQL topics.
+3. **`POST /chat`**: Receives `{"message": "..."}`, searches the local SQL knowledge base (27 indexed markdown files), and returns structured explanations, syntax, practical examples, and source references.
+4. **`GET /quiz`**: Returns difficulty-filtered SQL quiz questions (`beginner`, `intermediate`, `advanced`) with options and explanations.
+5. **`GET /{full_path}`**: Serves static files and React single-page application (SPA).
