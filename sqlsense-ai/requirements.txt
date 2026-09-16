@@ -1,2 +1,1 @@
-# Install dependencies for the backend
 -r backend/requirements.txt

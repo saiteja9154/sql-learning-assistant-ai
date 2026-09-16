@@ -2,17 +2,17 @@ import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    gemini_api_key: str = ""
-    # Look for the system prompt relative to this file
-    system_prompt_path: str = os.path.join(
-        os.path.dirname(__file__), 
-        "..", 
-        "..", 
-        "prompts", 
-        "system_prompt.txt"
-    )
     port: int = 8000
     host: str = "0.0.0.0"
+
+    # Base paths relative to this file (backend/app/config.py)
+    # backend/app -> backend -> sqlsense-ai
+    knowledge_dir: str = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "knowledge")
+    )
+    frontend_dist_dir: str = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")
+    )
 
     model_config = SettingsConfigDict(
         env_file=os.path.join(os.path.dirname(__file__), "..", ".env"),

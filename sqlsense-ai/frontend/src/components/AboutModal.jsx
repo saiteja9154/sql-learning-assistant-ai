@@ -71,15 +71,15 @@ export default function AboutModal({ isOpen, onClose }) {
                 </p>
               </div>
 
-              {/* RAG Readiness Info Card */}
+              {/* Local Knowledge Engine Info Card */}
               <div className="glass-card bg-brand-purple/5 border-brand-purple/20 flex gap-4 p-5 items-start">
                 <div className="p-2.5 rounded-xl bg-brand-purple/10 text-brand-purple border border-brand-purple/10">
                   <Cpu size={20} className="animate-pulse" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-slate-100 mb-1">RAG Architecture Ready</h4>
+                  <h4 className="text-sm font-semibold text-slate-100 mb-1">Local SQL Knowledge Engine</h4>
                   <p className="text-xs text-slate-300 font-light leading-relaxed">
-                    This project is designed modularly to easily integrate Retrieval-Augmented Generation (RAG) in the next phase. API service stubs are pre-wired, allowing you to pass real-time database schemas and documentation straight into the LLM context.
+                    Powered by a lightweight, zero-latency local SQL knowledge engine indexing curated syntax guides, edge-case warnings, performance tips, and interview questions with zero external API dependencies.
                   </p>
                 </div>
               </div>
@@ -115,7 +115,7 @@ export default function AboutModal({ isOpen, onClose }) {
                   </div>
                   <div className="flex flex-col p-3 rounded-xl bg-slate-900/40 border border-white/5">
                     <span className="font-semibold text-slate-100 mb-0.5">Backend Stack</span>
-                    <span>FastAPI, Python 3, Uvicorn, Google Generative AI (Gemini 1.5 Flash API)</span>
+                    <span>FastAPI, Python 3, Uvicorn, Local SQL Knowledge Engine</span>
                   </div>
                 </div>
               </div>

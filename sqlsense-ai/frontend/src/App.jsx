@@ -124,7 +124,7 @@ export default function App() {
         ...prev,
         { 
           role: 'assistant', 
-          content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server to process your query.\n\n* **Is the FastAPI backend running?** Verify that you ran the FastAPI server (e.g. using \`uvicorn app.main:app --port 8001\` in the backend folder).\n* **Is the Gemini API Key set?** Make sure you created a \`backend/.env\` file containing \`GEMINI_API_KEY=your_key\`.\n\nVerify these configurations and try again.` 
+          content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server to process your query.\n\n* **Is the FastAPI backend running?** Verify that the server is running on the expected host/port.\n* **Network status:** Check your browser connection.\n\nPlease refresh or try again.` 
         },
       ]);
     } finally {
@@ -280,7 +280,7 @@ export default function App() {
 
               {/* Shortcut labels disclaimer */}
               <div className="mt-2 flex items-center justify-between text-[10px] text-slate-600 font-light tracking-wide px-1">
-                <span>SQLSense AI utilizes local ChromaDB documentation to ground answers. Verify queries.</span>
+                <span>SQLSense AI utilizes a local SQL Knowledge Engine. Instant, reliable SQL assistance.</span>
                 <span className="hidden md:inline">Shortcuts: `Ctrl+F` Formatter • `Ctrl+H` Sidebar • `Ctrl+Q` Quiz • `Ctrl+P` Practice</span>
               </div>
 

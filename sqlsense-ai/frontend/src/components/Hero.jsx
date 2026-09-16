@@ -69,8 +69,8 @@ export default function Hero() {
             <Cpu size={18} />
           </div>
           <div>
-            <h3 className="font-semibold text-slate-200 text-sm mb-1">RAG Extensible</h3>
-            <p className="text-xs text-slate-400 leading-normal">Built modularly with API stubs to fetch real database schemas in the next phase.</p>
+            <h3 className="font-semibold text-slate-200 text-sm mb-1">Local Knowledge Engine</h3>
+            <p className="text-xs text-slate-400 leading-normal">Curated local SQL documentation with instant retrieval, zero keys, and offline speed.</p>
           </div>
         </div>
       </motion.div>
