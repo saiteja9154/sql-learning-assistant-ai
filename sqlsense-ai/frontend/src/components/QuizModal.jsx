@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, AlertCircle, RefreshCw, Award, BookOpen, Layers, Zap, Flame, Sparkles, ArrowRight, ChevronLeft } from 'lucide-react';
+import { X, CheckCircle2, AlertCircle, RefreshCw, Award, Flame, ArrowRight, HelpCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import API_URL from '../apiConfig';
 
@@ -98,63 +98,21 @@ const DEFAULT_QUESTIONS = {
         "There is no difference; they are interchangeable."
       ],
       correctIndex: 1,
-      explanation: "WHERE filters individual records before any grouping/aggregation occurs. HAVING filters groups produced by GROUP BY."
+      explanation: "WHERE filters rows before grouping/aggregations occur. HAVING filters the resulting aggregate groups (e.g. HAVING COUNT(*) > 5)."
     },
     {
       id: "i3",
-      topic: "Subqueries",
-      difficulty: "intermediate",
-      question: "What distinguishes a 'Correlated Subquery' from a standard nested subquery?",
-      options: [
-        "It executes only once for the entire query execution.",
-        "It references columns from the outer query and re-evaluates for every candidate row.",
-        "It can only be used inside the FROM clause.",
-        "It is always faster than a JOIN operation."
-      ],
-      correctIndex: 1,
-      explanation: "A correlated subquery references values from the outer query table, meaning it must be evaluated row-by-row for each row processed by the outer query."
-    },
-    {
-      id: "i4",
-      topic: "Normalization",
-      difficulty: "intermediate",
-      question: "Which Normal Form (NF) is satisfied when a table is in 1NF and all non-key columns are fully functionally dependent on the entire primary key (no partial dependencies)?",
-      options: [
-        "Second Normal Form (2NF)",
-        "Third Normal Form (3NF)",
-        "Boyce-Codd Normal Form (BCNF)",
-        "Fourth Normal Form (4NF)"
-      ],
-      correctIndex: 0,
-      explanation: "Second Normal Form (2NF) eliminates partial functional dependencies, ensuring every non-key attribute depends on the full composite primary key."
-    },
-    {
-      id: "i5",
-      topic: "Indexes",
-      difficulty: "intermediate",
-      question: "Why can a relational database table have only ONE Clustered Index?",
-      options: [
-        "Database engines enforce an artificial limit to save RAM.",
-        "A clustered index defines the actual physical storage order of data rows on disk.",
-        "Clustered indexes only work on VARCHAR columns.",
-        "Multiple clustered indexes cause deadlock in single-threaded queries."
-      ],
-      correctIndex: 1,
-      explanation: "Because a clustered index determines the physical sequence in which data pages and rows are stored on disk, data can only be physically sorted in one way."
-    },
-    {
-      id: "i6",
       topic: "UNION vs UNION ALL",
       difficulty: "intermediate",
-      question: "Why is UNION ALL typically faster in execution than UNION?",
+      question: "How does UNION differ from UNION ALL in performance and result set?",
       options: [
-        "UNION ALL uses an in-memory cache while UNION writes to disk.",
-        "UNION ALL returns all rows immediately without performing a duplicate sorting/deduplication step.",
-        "UNION ALL skips type checking across result columns.",
-        "UNION requires a foreign key relation between both queries."
+        "UNION keeps duplicate rows and is faster.",
+        "UNION eliminates duplicate rows with a sorting step; UNION ALL keeps duplicates and is faster.",
+        "UNION ALL can only combine queries from the exact same table name.",
+        "UNION cannot be used with ORDER BY."
       ],
       correctIndex: 1,
-      explanation: "UNION runs an implicit DISTINCT sort to eliminate duplicate rows, which is CPU and memory intensive. UNION ALL returns rows without deduplication."
+      explanation: "UNION performs a distinct sort to eliminate duplicates between result sets, which adds performance overhead. UNION ALL simply concatenates sets."
     }
   ],
   advanced: [
@@ -162,460 +120,365 @@ const DEFAULT_QUESTIONS = {
       id: "a1",
       topic: "Window Functions",
       difficulty: "advanced",
-      question: "What is the difference between RANK() and DENSE_RANK() when encountering tied values?",
+      question: "How does RANK() differ from DENSE_RANK() when encountering tied values?",
       options: [
-        "RANK() leaves no gaps in subsequent rank numbers; DENSE_RANK() skips ranks.",
-        "RANK() assigns gaps in ranking sequence after ties; DENSE_RANK() produces consecutive rank numbers without gaps.",
-        "RANK() requires an ORDER BY clause; DENSE_RANK() operates only with PARTITION BY.",
-        "DENSE_RANK() only works with integer score columns."
+        "RANK() skips subsequent rank numbers after ties; DENSE_RANK() assigns consecutive numbers without gaps.",
+        "DENSE_RANK() skips rank numbers after ties; RANK() assigns consecutive numbers.",
+        "RANK() can only operate on numerical data; DENSE_RANK() works on text.",
+        "There is no difference in ranking output."
       ],
-      correctIndex: 1,
-      explanation: "When ties occur (e.g. 1, 2, 2), RANK() skips the next number resulting in (1, 2, 2, 4), while DENSE_RANK() assigns consecutive numbers (1, 2, 2, 3)."
+      correctIndex: 0,
+      explanation: "RANK() leaves gaps (e.g., 1, 2, 2, 4) after duplicate values, whereas DENSE_RANK() assigns consecutive ranks without gaps (e.g., 1, 2, 2, 3)."
     },
     {
       id: "a2",
-      topic: "CTE",
+      topic: "CTEs",
       difficulty: "advanced",
-      question: "What is the mandatory structure of a Recursive Common Table Expression (Recursive CTE)?",
+      question: "What is a recursive Common Table Expression (CTE) primarily used for in SQL?",
       options: [
-        "Two SELECT queries joined by an INNER JOIN.",
-        "An Anchor Member query combined with a Recursive Member query via UNION ALL.",
-        "A WHILE loop statement wrapped around a temporary table.",
-        "A stored procedure that calls itself recursively."
+        "Querying hierarchical structures like org charts, graph trees, and bill of materials.",
+        "Creating permanent database triggers that execute on insert.",
+        "Bypassing table locks during multi-threaded bulk inserts.",
+        "Encrypting column values with SHA-256."
       ],
-      correctIndex: 1,
-      explanation: "A recursive CTE consists of an Anchor Member (base case) and a Recursive Member (recursive step referencing the CTE name), unified using UNION ALL with a termination condition."
+      correctIndex: 0,
+      explanation: "A recursive CTE references itself to iteratively traverse parent-child hierarchical trees, folder structures, or graph relationships."
     },
     {
       id: "a3",
-      topic: "Window Functions",
+      topic: "ACID Transactions",
       difficulty: "advanced",
-      question: "Which window function allows you to access data from the preceding row without joining the table to itself?",
-      options: ["LEAD()", "LAG()", "PREV()", "ROW_NUMBER()"],
-      correctIndex: 1,
-      explanation: "LAG() accesses data from a previous row at a specified offset within the partition. LEAD() accesses data from subsequent rows."
-    },
-    {
-      id: "a4",
-      topic: "Transactions",
-      difficulty: "advanced",
-      question: "Which ACID property guarantees that once a transaction has committed, its changes survive even in the event of a system crash or power outage?",
+      question: "Which ACID property guarantees that once a transaction commits, its changes survive system crashes and power failures?",
       options: ["Atomicity", "Consistency", "Isolation", "Durability"],
       correctIndex: 3,
-      explanation: "Durability guarantees that committed transactions are permanently recorded in non-volatile storage (via transaction write-ahead logs) and survive system crashes."
-    },
-    {
-      id: "a5",
-      topic: "Triggers & Procedures",
-      difficulty: "advanced",
-      question: "Inside an AFTER UPDATE trigger in SQL, which pseudo-tables are available to inspect pre-update and post-update row values?",
-      options: [
-        "OLD and NEW (or DELETED and INSERTED)",
-        "BEFORE and AFTER",
-        "PREVIOUS and CURRENT",
-        "TEMP_SOURCE and TEMP_TARGET"
-      ],
-      correctIndex: 0,
-      explanation: "In standard SQL (and engines like PostgreSQL/MySQL/SQL Server), triggers use OLD/DELETED to read values before the update and NEW/INSERTED for the updated values."
-    },
-    {
-      id: "a6",
-      topic: "Performance & Execution",
-      difficulty: "advanced",
-      question: "What is an 'Index Scan' vs an 'Index Seek' in query execution plans?",
-      options: [
-        "An Index Scan navigates directly to specific rows using B-Tree keys, while an Index Seek traverses all leaf pages.",
-        "An Index Seek uses the B-Tree structure to jump directly to qualifying rows; an Index Scan traverses all pages of the index.",
-        "Index Seek is only possible on tables with fewer than 1000 rows.",
-        "There is no difference; they are synonyms used by different database engines."
-      ],
-      correctIndex: 1,
-      explanation: "An Index Seek leverages the B-Tree index hierarchy to pinpoint specific target rows efficiently (O(log N)), whereas an Index Scan reads through the entire index."
+      explanation: "Durability guarantees that committed transactions are permanently recorded in non-volatile storage (WAL / transaction logs)."
     }
   ]
 };
 
-const DIFFICULTY_CONFIG = {
-  beginner: {
-    label: "Beginner",
-    badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-    borderActive: "border-emerald-500/50 bg-emerald-500/10",
-    icon: Sparkles,
-    iconColor: "text-emerald-400",
-    description: "SQL fundamentals, SELECT, WHERE, CRUD, and basic filtering."
-  },
-  intermediate: {
-    label: "Intermediate",
-    badge: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    borderActive: "border-blue-500/50 bg-blue-500/10",
-    icon: Zap,
-    iconColor: "text-blue-400",
-    description: "Joins, grouping, HAVING, subqueries, and practical multi-table queries."
-  },
-  advanced: {
-    label: "Advanced",
-    badge: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    borderActive: "border-purple-500/50 bg-purple-500/10",
-    icon: Flame,
-    iconColor: "text-purple-400",
-    description: "CTEs, Window Functions, indexing, transactions, and query optimization."
-  }
-};
-
 export default function QuizModal({ isOpen, onClose }) {
-  // Phase state: 'select_difficulty' | 'in_quiz' | 'results'
-  const [phase, setPhase] = useState('select_difficulty');
-  const [selectedDifficulty, setSelectedDifficulty] = useState('beginner');
-  const [activeDifficulty, setActiveDifficulty] = useState('beginner');
-  
-  const [quizQuestions, setQuizQuestions] = useState([]);
-  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [difficulty, setDifficulty] = useState('beginner');
+  const [questions, setQuestions] = useState(DEFAULT_QUESTIONS.beginner);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
-  const [answers, setAnswers] = useState([]);
+  const [isAnswered, setIsAnswered] = useState(false);
   const [score, setScore] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Reset state when modal is closed
+  // Fetch questions from backend when difficulty changes or modal opens
   useEffect(() => {
-    if (!isOpen) {
-      setPhase('select_difficulty');
-      setCurrentQuestion(0);
-      setSelectedOption(null);
-      setAnswers([]);
-      setScore(0);
-    }
-  }, [isOpen]);
-
-  const startQuiz = async (difficulty) => {
-    const diff = difficulty || selectedDifficulty;
-    setActiveDifficulty(diff);
-    setIsLoadingQuestions(true);
-
-    try {
-      const res = await fetch(`${API_URL}/quiz?difficulty=${diff}`);
-      if (res.ok) {
-        const data = await res.json();
+    if (!isOpen) return;
+    
+    setIsLoading(true);
+    fetch(`${API_URL}/quiz?difficulty=${difficulty}`)
+      .then(res => {
+        if (!res.ok) throw new Error("Backend query failed");
+        return res.json();
+      })
+      .then(data => {
         if (data.questions && data.questions.length > 0) {
-          setQuizQuestions(data.questions);
+          setQuestions(data.questions);
         } else {
-          setQuizQuestions(DEFAULT_QUESTIONS[diff] || DEFAULT_QUESTIONS.beginner);
+          setQuestions(DEFAULT_QUESTIONS[difficulty] || DEFAULT_QUESTIONS.beginner);
         }
-      } else {
-        setQuizQuestions(DEFAULT_QUESTIONS[diff] || DEFAULT_QUESTIONS.beginner);
-      }
-    } catch (e) {
-      setQuizQuestions(DEFAULT_QUESTIONS[diff] || DEFAULT_QUESTIONS.beginner);
-    } finally {
-      setIsLoadingQuestions(false);
-      setCurrentQuestion(0);
-      setSelectedOption(null);
-      setAnswers([]);
-      setScore(0);
-      setPhase('in_quiz');
-    }
+      })
+      .catch(() => {
+        setQuestions(DEFAULT_QUESTIONS[difficulty] || DEFAULT_QUESTIONS.beginner);
+      })
+      .finally(() => {
+        setIsLoading(false);
+        resetQuizState();
+      });
+  }, [difficulty, isOpen]);
+
+  const resetQuizState = () => {
+    setCurrentIndex(0);
+    setSelectedOption(null);
+    setIsAnswered(false);
+    setScore(0);
+    setStreak(0);
+    setMaxStreak(0);
+    setIsCompleted(false);
   };
 
-  const handleOptionSelect = (idx) => {
-    setSelectedOption(idx);
+  const handleSelectOption = (index) => {
+    if (isAnswered) return;
+    setSelectedOption(index);
+    setIsAnswered(true);
+
+    const currentQ = questions[currentIndex];
+    const isCorrect = index === currentQ.correctIndex;
+
+    if (isCorrect) {
+      setScore(prev => prev + 1);
+      setStreak(prev => {
+        const next = prev + 1;
+        if (next > maxStreak) setMaxStreak(next);
+        return next;
+      });
+    } else {
+      setStreak(0);
+    }
   };
 
   const handleNext = () => {
-    const activeQ = quizQuestions[currentQuestion];
-    if (!activeQ) return;
-
-    const isCorrect = selectedOption === activeQ.correctIndex;
-    const nextAnswers = [...answers, {
-      questionIdx: currentQuestion,
-      selectedIdx: selectedOption,
-      isCorrect
-    }];
-    setAnswers(nextAnswers);
-
-    if (isCorrect) {
-      setScore(s => s + 1);
-    }
-
-    if (currentQuestion < quizQuestions.length - 1) {
-      setCurrentQuestion(q => q + 1);
+    if (currentIndex + 1 < questions.length) {
+      setCurrentIndex(prev => prev + 1);
       setSelectedOption(null);
+      setIsAnswered(false);
     } else {
-      setPhase('results');
+      setIsCompleted(true);
     }
   };
 
-  const handleRetake = () => {
-    startQuiz(activeDifficulty);
-  };
+  if (!isOpen) return null;
 
-  const handleChangeDifficulty = () => {
-    setPhase('select_difficulty');
-    setCurrentQuestion(0);
-    setSelectedOption(null);
-    setAnswers([]);
-    setScore(0);
-  };
-
-  const diffConfig = DIFFICULTY_CONFIG[activeDifficulty] || DIFFICULTY_CONFIG.beginner;
+  const currentQ = questions[currentIndex] || questions[0];
+  const progressPercent = Math.round(((currentIndex + (isCompleted ? 1 : 0)) / questions.length) * 100);
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-          />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/75 backdrop-blur-md"
+        />
 
-          {/* Modal content */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', duration: 0.5 }}
-            className="relative w-full max-w-xl bg-dark-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[88vh]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/5 bg-slate-950/40">
-              <div className="flex items-center gap-2">
-                <BookOpen size={18} className="text-brand-purple" />
-                <h2 className="text-lg font-bold text-slate-100">SQL Practice Quiz</h2>
-                {phase !== 'select_difficulty' && (
-                  <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border ${diffConfig.badge}`}>
-                    {diffConfig.label}
-                  </span>
-                )}
+        {/* Modal Window */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          className="relative w-full max-w-2xl bg-[#0b0d16] border border-white/[0.09] rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh]"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#080a12]/70">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400">
+                <Award size={16} />
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-all active:scale-95 duration-200 cursor-pointer"
-              >
-                <X size={18} />
-              </button>
+              <div>
+                <h2 className="text-sm font-bold text-white font-display">SQL Knowledge Quiz</h2>
+                <p className="text-[11px] text-slate-400 font-mono">Test concepts, queries & constraints</p>
+              </div>
             </div>
 
-            {/* Body */}
-            <div className="p-6 overflow-y-auto flex-1 scrollbar-thin">
-              
-              {/* PHASE 1: DIFFICULTY SELECTION */}
-              {phase === 'select_difficulty' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-100">Choose Quiz Difficulty</h3>
-                    <p className="text-xs text-slate-400 mt-1 leading-normal">
-                      Select your skill level to test your knowledge against curated SQL topics.
-                    </p>
-                  </div>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
 
-                  {/* Difficulty Cards Grid */}
-                  <div className="flex flex-col gap-3">
-                    {Object.entries(DIFFICULTY_CONFIG).map(([key, config]) => {
-                      const Icon = config.icon;
-                      const isSelected = selectedDifficulty === key;
-                      return (
-                        <div
-                          key={key}
-                          onClick={() => setSelectedDifficulty(key)}
-                          className={`p-4 rounded-xl border transition-all duration-200 cursor-pointer flex items-start gap-3.5 ${
-                            isSelected
-                              ? `${config.borderActive} shadow-sm`
-                              : 'bg-slate-950/40 border-white/5 hover:bg-slate-900/60 hover:border-white/10'
-                          }`}
-                        >
-                          <div className={`p-2 rounded-lg bg-slate-900 border border-white/5 mt-0.5 ${config.iconColor}`}>
-                            <Icon size={18} />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-slate-100">{config.label}</span>
-                              <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                                isSelected ? 'border-brand-purple bg-brand-purple/20' : 'border-slate-700'
-                              }`}>
-                                {isSelected && <div className="w-2 h-2 rounded-full bg-brand-purple" />}
-                              </div>
-                            </div>
-                            <p className="text-xs text-slate-400 mt-1 font-light leading-relaxed">
-                              {config.description}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* PHASE 2: IN QUIZ */}
-              {phase === 'in_quiz' && quizQuestions.length > 0 && (
-                <div className="space-y-6">
-                  {/* Progress bar */}
-                  <div className="flex items-center justify-between text-xs text-slate-500 font-semibold tracking-wider">
-                    <span>QUESTION {currentQuestion + 1} OF {quizQuestions.length}</span>
-                    <span>{Math.round(((currentQuestion) / quizQuestions.length) * 100)}% COMPLETE</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-white/5">
-                    <div 
-                      className="bg-gradient-to-r from-brand-purple to-brand-blue h-full rounded-full transition-all duration-300"
-                      style={{ width: `${((currentQuestion + 1) / quizQuestions.length) * 100}%` }}
-                    />
-                  </div>
-
-                  {/* Question Topic & Title */}
-                  <div>
-                    {quizQuestions[currentQuestion].topic && (
-                      <span className="text-[10px] font-semibold text-brand-purple uppercase tracking-wider mb-1.5 inline-block">
-                        Topic: {quizQuestions[currentQuestion].topic}
-                      </span>
-                    )}
-                    <h3 className="text-base font-semibold text-slate-200 leading-relaxed">
-                      {quizQuestions[currentQuestion].question}
-                    </h3>
-                  </div>
-
-                  {/* Options List */}
-                  <div className="flex flex-col gap-3">
-                    {quizQuestions[currentQuestion].options.map((option, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => handleOptionSelect(idx)}
-                        className={`w-full flex items-center justify-between p-4 rounded-xl border text-left text-sm font-medium transition-all duration-200 active:scale-[0.99] cursor-pointer ${
-                          selectedOption === idx
-                            ? 'bg-brand-purple/15 border-brand-purple/50 text-white shadow-glow-purple'
-                            : 'bg-slate-900/30 border-white/5 hover:bg-slate-800/40 text-slate-300 hover:text-slate-100'
-                        }`}
-                      >
-                        <span>{option}</span>
-                        <div 
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ml-3 ${
-                            selectedOption === idx
-                              ? 'border-brand-purple bg-brand-purple/30'
-                              : 'border-slate-700'
-                          }`}
-                        >
-                          {selectedOption === idx && <div className="w-2 h-2 rounded-full bg-brand-purple" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* PHASE 3: RESULTS */}
-              {phase === 'results' && (
-                <div className="space-y-6 text-center">
-                  <div className="mx-auto w-16 h-16 rounded-full bg-brand-purple/10 flex items-center justify-center border border-brand-purple/20 text-brand-purple mb-4 animate-bounce">
-                    <Award size={32} />
-                  </div>
-                  <div>
-                    <h3 className="text-2xl font-bold text-slate-100">Quiz Completed!</h3>
-                    <p className="text-slate-400 text-sm mt-1 leading-normal">
-                      Difficulty: <strong className="text-slate-200 capitalize">{activeDifficulty}</strong> • You scored <strong className="text-brand-purple">{score}</strong> out of <strong className="text-slate-200">{quizQuestions.length}</strong> questions correctly ({Math.round((score / Math.max(quizQuestions.length, 1)) * 100)}%).
-                    </p>
-                  </div>
-
-                  {/* Question Review */}
-                  <div className="text-left space-y-4 pt-4 border-t border-white/5">
-                    <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Question Review</h4>
-                    {quizQuestions.map((q, idx) => {
-                      const userAns = answers.find(a => a.questionIdx === idx);
-                      return (
-                        <div key={idx} className="p-4 rounded-xl bg-slate-950/40 border border-white/5 space-y-2">
-                          <div className="flex items-start justify-between gap-3">
-                            <span className="text-sm font-semibold text-slate-200 leading-normal">{q.question}</span>
-                            {userAns?.isCorrect ? (
-                              <CheckCircle size={16} className="text-emerald-400 flex-shrink-0" />
-                            ) : (
-                              <AlertCircle size={16} className="text-rose-400 flex-shrink-0" />
-                            )}
-                          </div>
-                          <div className="text-xs text-slate-400 font-light">
-                            <span className="font-semibold text-slate-300">Your Answer:</span> {q.options[userAns?.selectedIdx]}
-                          </div>
-                          {!userAns?.isCorrect && (
-                            <div className="text-xs text-emerald-400 font-light">
-                              <span className="font-semibold text-emerald-500">Correct Answer:</span> {q.options[q.correctIndex]}
-                            </div>
-                          )}
-                          <div className="text-[11px] text-slate-500 leading-relaxed font-light bg-slate-900/40 p-2 rounded-lg mt-1 border border-white/5">
-                            <strong>Note:</strong> {q.explanation}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+          {/* Difficulty Tabs & Stats Bar */}
+          <div className="px-5 py-3 border-b border-white/[0.06] bg-[#0a0c16]/50 flex flex-wrap items-center justify-between gap-3">
+            {/* Difficulty Tabs */}
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              {['beginner', 'intermediate', 'advanced'].map((lvl) => (
+                <button
+                  key={lvl}
+                  onClick={() => {
+                    setDifficulty(lvl);
+                  }}
+                  className={`px-3 py-1 text-xs rounded-lg font-medium capitalize transition-all cursor-pointer ${
+                    difficulty === lvl
+                      ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-glow-indigo'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  {lvl}
+                </button>
+              ))}
             </div>
 
-            {/* Footer Controls */}
-            <div className="p-4 border-t border-white/5 bg-slate-950/40 flex items-center justify-between gap-3">
-              {phase === 'select_difficulty' && (
-                <>
-                  <button
-                    onClick={onClose}
-                    className="px-4 py-2 text-xs font-semibold rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white transition-all active:scale-95 duration-200 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => startQuiz(selectedDifficulty)}
-                    disabled={isLoadingQuestions}
-                    className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple hover:opacity-95 transition-all active:scale-95 duration-200 cursor-pointer"
-                  >
-                    <span>Start {DIFFICULTY_CONFIG[selectedDifficulty]?.label} Quiz</span>
-                    <ArrowRight size={13} />
-                  </button>
-                </>
+            {/* Streak & Score pill */}
+            <div className="flex items-center gap-3 text-xs font-mono">
+              {streak > 1 && (
+                <div className="flex items-center gap-1 text-amber-400 font-semibold animate-pulse">
+                  <Flame size={13} className="fill-amber-400" />
+                  <span>{streak} Streak!</span>
+                </div>
               )}
+              <div className="text-slate-400">
+                Score: <span className="text-white font-bold">{score}</span>/{questions.length}
+              </div>
+            </div>
+          </div>
 
-              {phase === 'in_quiz' && (
-                <>
-                  <button
-                    onClick={handleChangeDifficulty}
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-                  >
-                    <ChevronLeft size={13} />
-                    <span>Change Level</span>
-                  </button>
-                  <button
-                    onClick={handleNext}
-                    disabled={selectedOption === null}
-                    className={`px-5 py-2 text-xs font-semibold rounded-xl transition-all active:scale-95 duration-200 ${
-                      selectedOption !== null
-                        ? 'bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple cursor-pointer'
-                        : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5'
-                    }`}
-                  >
-                    {currentQuestion === quizQuestions.length - 1 ? "Finish Quiz" : "Next Question"}
-                  </button>
-                </>
-              )}
+          {/* Progress Bar */}
+          <div className="w-full bg-slate-900 h-1">
+            <div 
+              className="bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 h-full transition-all duration-300"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
 
-              {phase === 'results' && (
-                <div className="w-full flex items-center justify-between gap-3">
+          {/* Quiz Content Body */}
+          <div className="p-5 sm:p-6 overflow-y-auto flex-1 scrollbar-thin">
+            {isLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3">
+                <RefreshCw size={24} className="text-indigo-400 animate-spin" />
+                <span className="text-xs text-slate-400 font-mono">Loading questions...</span>
+              </div>
+            ) : isCompleted ? (
+              /* Summary Completion Screen */
+              <div className="py-6 flex flex-col items-center text-center">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 p-[1px] shadow-glow-indigo mb-4 flex items-center justify-center">
+                  <div className="w-full h-full rounded-[15px] bg-[#090b14] flex items-center justify-center text-indigo-300">
+                    <Award size={28} />
+                  </div>
+                </div>
+
+                <h3 className="text-xl font-bold text-white mb-1 font-display">Quiz Complete!</h3>
+                <p className="text-xs text-slate-400 mb-6">
+                  {score === questions.length 
+                    ? "Perfect score! You've mastered these SQL concepts."
+                    : score >= questions.length / 2
+                    ? "Great job! Keep practicing to sharpen your query knowledge."
+                    : "Good effort! Review the explanations and try again."}
+                </p>
+
+                <div className="grid grid-cols-3 gap-3 w-full max-w-sm mb-8">
+                  <div className="glass-card p-3 rounded-xl text-center">
+                    <div className="text-lg font-bold text-white font-mono">{score}/{questions.length}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">Final Score</div>
+                  </div>
+                  <div className="glass-card p-3 rounded-xl text-center">
+                    <div className="text-lg font-bold text-indigo-400 font-mono">{Math.round((score / questions.length) * 100)}%</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">Accuracy</div>
+                  </div>
+                  <div className="glass-card p-3 rounded-xl text-center">
+                    <div className="text-lg font-bold text-amber-400 font-mono">{maxStreak}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wide">Max Streak</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
                   <button
-                    onClick={handleChangeDifficulty}
-                    className="px-4 py-2 text-xs font-semibold rounded-xl border border-white/10 hover:bg-white/5 text-slate-300 hover:text-white transition-all active:scale-95 duration-200 cursor-pointer"
-                  >
-                    Change Difficulty
-                  </button>
-                  <button
-                    onClick={handleRetake}
-                    className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple hover:opacity-95 transition-all active:scale-95 duration-200 cursor-pointer"
+                    onClick={resetQuizState}
+                    className="flex items-center gap-2 px-4 py-2 text-xs rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-glow-indigo transition-all cursor-pointer"
                   >
                     <RefreshCw size={13} />
                     <span>Retake Quiz</span>
                   </button>
+                  <button
+                    onClick={onClose}
+                    className="px-4 py-2 text-xs rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 transition-all cursor-pointer"
+                  >
+                    Close Workspace
+                  </button>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              /* Active Question View */
+              <div>
+                {/* Question Metadata */}
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[11px] font-mono text-indigo-400 uppercase font-semibold">
+                    Question {currentIndex + 1} of {questions.length} • {currentQ.topic || 'SQL'}
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.04] text-slate-400 uppercase font-mono">
+                    {difficulty}
+                  </span>
+                </div>
 
-          </motion.div>
-        </div>
-      )}
+                {/* Question Text */}
+                <h3 className="text-base sm:text-lg font-semibold text-white mb-5 leading-snug">
+                  {currentQ.question}
+                </h3>
+
+                {/* Options List */}
+                <div className="flex flex-col gap-2.5 mb-5">
+                  {currentQ.options.map((option, idx) => {
+                    const isSelected = selectedOption === idx;
+                    const isCorrect = idx === currentQ.correctIndex;
+                    
+                    let btnClass = "bg-white/[0.02] border-white/[0.07] text-slate-300 hover:bg-white/[0.05] hover:border-white/[0.15]";
+                    let letterClass = "bg-white/[0.06] text-slate-400";
+
+                    if (isAnswered) {
+                      if (isCorrect) {
+                        btnClass = "bg-emerald-500/15 border-emerald-500/40 text-emerald-200";
+                        letterClass = "bg-emerald-500 text-black font-bold";
+                      } else if (isSelected) {
+                        btnClass = "bg-rose-500/15 border-rose-500/40 text-rose-200";
+                        letterClass = "bg-rose-500 text-white font-bold";
+                      } else {
+                        btnClass = "bg-white/[0.01] border-white/[0.04] text-slate-500 opacity-60";
+                      }
+                    }
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectOption(idx)}
+                        disabled={isAnswered}
+                        className={`w-full text-left p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between cursor-pointer ${btnClass}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-lg text-xs flex items-center justify-center font-mono ${letterClass}`}>
+                            {String.fromCharCode(65 + idx)}
+                          </span>
+                          <span className="text-xs sm:text-sm font-normal">{option}</span>
+                        </div>
+                        {isAnswered && (
+                          <div>
+                            {isCorrect && <CheckCircle2 size={16} className="text-emerald-400" />}
+                            {!isCorrect && isSelected && <AlertCircle size={16} className="text-rose-400" />}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Explanation Reveal */}
+                <AnimatePresence>
+                  {isAnswered && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 mb-5"
+                    >
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-300 mb-1">
+                        <HelpCircle size={13} />
+                        <span>Explanation</span>
+                      </div>
+                      <p className="text-xs text-slate-300 leading-relaxed font-light">
+                        {currentQ.explanation}
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Action Controls */}
+                <div className="flex items-center justify-end">
+                  {isAnswered && (
+                    <button
+                      onClick={handleNext}
+                      className="flex items-center gap-2 px-5 py-2 text-xs rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold shadow-glow-indigo transition-all cursor-pointer active:scale-95"
+                    >
+                      <span>{currentIndex + 1 === questions.length ? 'View Results' : 'Next Question'}</span>
+                      <ArrowRight size={13} />
+                    </button>
+                  )}
+                </div>
+
+              </div>
+            )}
+          </div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 }

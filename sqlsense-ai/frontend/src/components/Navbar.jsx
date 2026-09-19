@@ -1,9 +1,10 @@
 import React from 'react';
-import { Database, HelpCircle, RefreshCw, Cpu, Menu, Sun, Moon } from 'lucide-react';
+import { Menu, RefreshCw, Download, Info, Sun, Moon } from 'lucide-react';
 
 export default function Navbar({ 
   onClearChat, 
   hasMessages, 
+  onDownloadChat,
   onOpenAbout, 
   onToggleSidebar, 
   sidebarOpen,
@@ -11,69 +12,79 @@ export default function Navbar({
   onToggleTheme 
 }) {
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-slate-950/70 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full h-14 border-b border-white/[0.06] bg-[#07080c]/80 backdrop-blur-xl">
+      <div className="h-full px-3.5 sm:px-5 flex items-center justify-between">
         
-        {/* Left Toggle and Brand */}
+        {/* Left: Sidebar Toggle & Context Breadcrumb */}
         <div className="flex items-center gap-3">
-          {/* Sidebar menu toggle */}
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-all active:scale-95 duration-200"
-            title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer"
+            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
           >
-            <Menu size={18} />
+            <Menu size={16} />
           </button>
 
-          {/* Logo brand */}
-          <div className="flex items-center gap-2 cursor-pointer group">
-            <div className="p-2 rounded-xl bg-gradient-to-tr from-brand-purple to-brand-blue text-white shadow-glow-purple group-hover:scale-105 duration-300">
-              <Database size={18} className="stroke-[2.5]" />
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium select-none">
+              <span className="text-white font-semibold flex items-center gap-1 font-display">
+                <span className="text-indigo-400">◈</span> SQLSense
+              </span>
+              <span className="text-slate-600">/</span>
+              <span className="text-slate-300">Workspace</span>
             </div>
-            <div>
-              <span className="text-lg font-bold bg-gradient-to-r from-white via-slate-100 to-slate-400 bg-clip-text text-transparent tracking-tight">
-                SQLSense <span className="text-brand-purple">AI</span>
-              </span>
-              <span className="hidden sm:inline-block ml-2 px-1.5 py-0.5 rounded-full text-[9px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                RAG Active
-              </span>
+
+            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-300">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>RAG Engine Ready</span>
             </div>
           </div>
         </div>
 
-        {/* Right Action Controls */}
-        <div className="flex items-center gap-3">
-          
+        {/* Right: Actions Bar */}
+        <div className="flex items-center gap-2">
+          {/* Download Conversation */}
+          {hasMessages && onDownloadChat && (
+            <button
+              onClick={onDownloadChat}
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              title="Export Conversation Log (.txt)"
+            >
+              <Download size={14} />
+            </button>
+          )}
+
           {/* Theme Visual Toggle */}
           <button
             onClick={onToggleTheme}
-            className="p-2 rounded-xl border border-white/10 hover:border-white/20 bg-slate-900/40 text-slate-400 hover:text-slate-200 transition-all active:scale-95 duration-200"
-            title="Toggle theme visual mode"
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            title="Toggle Visual Theme"
           >
-            {themeMode === 'indigo' ? <Moon size={15} /> : <Sun size={15} />}
+            {themeMode === 'indigo' ? <Moon size={14} /> : <Sun size={14} />}
           </button>
 
-          {/* About Button */}
+          {/* Info / Docs Trigger */}
           <button 
             onClick={onOpenAbout}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-xl font-medium border border-white/10 hover:border-white/20 bg-slate-900/40 text-slate-300 hover:text-white transition-all active:scale-95 duration-200"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.02] text-slate-300 hover:text-white transition-all cursor-pointer"
           >
-            <HelpCircle size={14} />
-            <span className="hidden sm:inline">Info</span>
+            <Info size={13} className="text-indigo-400" />
+            <span className="hidden sm:inline text-[11px] font-medium">Docs</span>
           </button>
 
-          {/* Reset/Clear Chat Button (visible only when there are messages) */}
+          {/* Reset / New Session */}
           {hasMessages && (
             <button
               onClick={onClearChat}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs rounded-xl font-semibold bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple hover:opacity-90 transition-all active:scale-95 duration-200"
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg font-medium bg-white/[0.05] hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/[0.08] hover:border-rose-500/30 transition-all cursor-pointer"
               title="Reset conversation"
             >
-              <RefreshCw size={12} />
-              <span>Reset</span>
+              <RefreshCw size={11} />
+              <span className="hidden sm:inline text-[11px]">Reset</span>
             </button>
           )}
         </div>
+
       </div>
     </header>
   );

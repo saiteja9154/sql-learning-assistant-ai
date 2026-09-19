@@ -1,13 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Sparkles, Download, Code, Award, Terminal, LayoutList } from 'lucide-react';
+import { Send } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import QuickActionCards from './components/QuickActionCards';
 import ChatWindow from './components/ChatWindow';
 import SuggestedPrompts from './components/SuggestedPrompts';
 import AboutModal from './components/AboutModal';
-
-// Components
 import Sidebar from './components/Sidebar';
 import FormatterModal from './components/FormatterModal';
 import QuizModal from './components/QuizModal';
@@ -20,16 +17,15 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState(null);
 
-  // States
+  // Layout & Feature States
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [recentQuestions, setRecentQuestions] = useState([]);
   const [activeModal, setActiveModal] = useState(null); // 'formatter' | 'quiz' | 'practice' | null
   const [themeMode, setThemeMode] = useState('indigo'); // 'indigo' | 'slate'
 
-  // Ref to hold any running stream interval for clean cancellation
   const streamIntervalRef = useRef(null);
+  const textareaRef = useRef(null);
 
   // Load recent questions from LocalStorage on mount
   useEffect(() => {
@@ -38,12 +34,12 @@ export default function App() {
       try {
         setRecentQuestions(JSON.parse(saved));
       } catch (e) {
-        console.error("Failed to parse recent questions", e);
+        console.error("Failed to parse recent queries", e);
       }
     }
   }, []);
 
-  // Cleanup stream on unmount
+  // Cleanup active stream on unmount
   useEffect(() => {
     return () => {
       if (streamIntervalRef.current) {
@@ -52,17 +48,17 @@ export default function App() {
     };
   }, []);
 
-  // Keyboard Shortcuts Hook
+  // Global Keyboard Shortcuts
   useEffect(() => {
     const handleShortcuts = (e) => {
-      // Esc closes all modals
+      // Esc closes all active modals
       if (e.key === 'Escape') {
         setActiveModal(null);
         setIsAboutOpen(false);
       }
       
-      // Ctrl combinations
-      if (e.ctrlKey) {
+      // Ctrl / Cmd combinations
+      if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'h') {
           e.preventDefault();
           setSidebarOpen(prev => !prev);
@@ -83,6 +79,10 @@ export default function App() {
           e.preventDefault();
           setActiveModal('practice');
         }
+        if (e.key.toLowerCase() === 'n') {
+          e.preventDefault();
+          handleClearChat();
+        }
       }
     };
 
@@ -93,23 +93,21 @@ export default function App() {
   const isGenerating = isLoading || isStreaming;
 
   const handleSendMessage = async (textToSend) => {
-    const query = textToSend.trim();
+    const query = (textToSend || input).trim();
     if (!query || isGenerating) return;
 
-    setErrorMessage(null);
-
-    // Cancel any previous active streaming timer
+    // Cancel any previous active streaming interval
     if (streamIntervalRef.current) {
       clearInterval(streamIntervalRef.current);
       streamIntervalRef.current = null;
     }
 
-    // Update recent queries lists
-    const updatedRecents = [query, ...recentQuestions.filter(q => q !== query)].slice(0, 8);
+    // Update recent queries in state & LocalStorage
+    const updatedRecents = [query, ...recentQuestions.filter(q => q !== query)].slice(0, 10);
     setRecentQuestions(updatedRecents);
     localStorage.setItem('sqlsense_recent_queries', JSON.stringify(updatedRecents));
 
-    // 1. Create and render user message immediately with a unique ID
+    // Append user message
     const userMsgId = 'user-' + Date.now();
     const userMessage = { id: userMsgId, role: 'user', content: query };
 
@@ -135,32 +133,26 @@ export default function App() {
       const data = await response.json();
       const fullReply = data.reply || "No response generated.";
 
-      // 2. Ensure a short, natural thinking pause (350ms min) for realistic AI interaction
+      // Natural thinking pause
       const elapsed = Date.now() - startTime;
-      const minThinkingTime = 380;
+      const minThinkingTime = 320;
       if (elapsed < minThinkingTime) {
         await new Promise((resolve) => setTimeout(resolve, minThinkingTime - elapsed));
       }
 
-      // 3. Transition from Thinking to Streaming/Typing reveal
       setIsLoading(false);
       setIsStreaming(true);
 
       const assistantMsgId = 'assistant-' + Date.now();
 
-      // Append assistant message container with empty initial content
       setMessages((prev) => [
         ...prev,
         { id: assistantMsgId, role: 'assistant', content: '', isStreaming: true },
       ]);
 
-      // 4. Adaptive Progressive Reveal
-      // Balances smooth reading speed with instant responsive feel:
-      // Short response: ~3 chars per 16ms
-      // Medium response: ~8 chars per 16ms
-      // Long response: ~18 chars per 16ms
+      // Progressive reveal
       const len = fullReply.length;
-      const chunkSize = len > 1200 ? 20 : len > 600 ? 10 : len > 200 ? 5 : 3;
+      const chunkSize = len > 1200 ? 20 : len > 600 ? 12 : len > 200 ? 6 : 3;
       const tickInterval = 16;
       let currentIndex = 0;
 
@@ -173,7 +165,6 @@ export default function App() {
             clearInterval(streamIntervalRef.current);
             streamIntervalRef.current = null;
 
-            // Finalize completed message
             setMessages((prev) =>
               prev.map((msg) =>
                 msg.id === assistantMsgId
@@ -203,13 +194,12 @@ export default function App() {
       setIsLoading(false);
       setIsStreaming(false);
 
-      // Append clean error message
       setMessages((prev) => [
         ...prev,
         { 
           id: 'error-' + Date.now(),
           role: 'assistant', 
-          content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server to process your query.\n\n* **Is the FastAPI backend running?** Verify that the server is running on the expected host/port.\n* **Network status:** Check your browser connection.\n\nPlease refresh or try again.` 
+          content: `⚠️ **Connection Error**\n\nI couldn't reach the local backend server.\n\n* **Is the FastAPI backend active?** Ensure the backend is running on the configured host/port.\n* **Network status:** Check your local connection.\n\nPlease try sending your message again.` 
         },
       ]);
     } finally {
@@ -231,16 +221,25 @@ export default function App() {
     }
     setMessages([]);
     setInput('');
-    setErrorMessage(null);
     setIsLoading(false);
     setIsStreaming(false);
+  };
+
+  const handleDeleteHistoryItem = (itemToDelete) => {
+    const updated = recentQuestions.filter(q => q !== itemToDelete);
+    setRecentQuestions(updated);
+    localStorage.setItem('sqlsense_recent_queries', JSON.stringify(updated));
+  };
+
+  const handleClearHistory = () => {
+    setRecentQuestions([]);
+    localStorage.removeItem('sqlsense_recent_queries');
   };
 
   // Download Chat Log Utility
   const handleDownloadChat = () => {
     if (messages.length === 0) return;
     
-    // Format conversation logs
     const textLog = messages.map(msg => {
       const roleName = msg.role === 'user' ? 'USER' : 'SQLSENSE AI';
       return `[${roleName}]\n${msg.content}\n\n==================================================\n`;
@@ -258,37 +257,42 @@ export default function App() {
   };
 
   return (
-    <div className={`min-h-screen flex bg-slate-950 font-sans text-slate-100 transition-colors duration-500 overflow-hidden ${
-      themeMode === 'slate' ? 'selection:bg-slate-700 selection:text-white' : 'selection:bg-brand-purple/35 selection:text-white'
+    <div className={`h-screen flex bg-[#06070a] font-sans text-slate-100 overflow-hidden ${
+      themeMode === 'slate' ? 'selection:bg-slate-700 selection:text-white' : 'selection:bg-indigo-500/30 selection:text-white'
     }`}>
       
-      {/* Collapsible Left Sidebar */}
+      {/* Collapsible Left Developer Sidebar */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         recentQuestions={recentQuestions}
         onSelectQuestion={handleSendMessage}
+        onDeleteQuestion={handleDeleteHistoryItem}
+        onClearHistory={handleClearHistory}
         onNewChat={handleClearChat}
         onOpenFormatter={() => setActiveModal('formatter')}
         onOpenQuiz={() => setActiveModal('quiz')}
         onOpenPractice={() => setActiveModal('practice')}
         onOpenAbout={() => setIsAboutOpen(true)}
+        themeMode={themeMode}
+        onToggleTheme={() => setThemeMode(t => t === 'indigo' ? 'slate' : 'indigo')}
       />
 
-      {/* Main Page Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+      {/* Main Workspace Page Area */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative min-w-0">
         
-        {/* Dynamic Background Gradients Glows based on Theme mode selection */}
+        {/* Subtle Atmospheric Gradients */}
         <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ${
           themeMode === 'slate' 
-            ? 'bg-gradient-to-tr from-slate-900/10 via-transparent to-slate-900/10' 
-            : 'bg-[radial-gradient(circle_at_10%_20%,rgba(139,92,246,0.04)_0%,transparent_40%),radial-gradient(circle_at_90%_80%,rgba(59,130,246,0.04)_0%,transparent_40%)]'
+            ? 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.05),rgba(255,255,255,0))]' 
+            : 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.08),rgba(255,255,255,0))]'
         }`} />
 
         {/* Top Navbar */}
         <Navbar 
           onClearChat={handleClearChat} 
           hasMessages={messages.length > 0} 
+          onDownloadChat={handleDownloadChat}
           onOpenAbout={() => setIsAboutOpen(true)} 
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
           sidebarOpen={sidebarOpen}
@@ -296,91 +300,79 @@ export default function App() {
           onToggleTheme={() => setThemeMode(t => t === 'indigo' ? 'slate' : 'indigo')}
         />
 
-        {/* Messaging Logs scroll containers */}
+        {/* Main Canvas / Chat Workspace */}
         <div className="flex-1 flex flex-col justify-between overflow-hidden relative z-10">
           {messages.length === 0 ? (
-            /* Empty / Homepage State */
+            /* AI Assistant Landing State */
             <div className="flex-1 flex flex-col justify-center overflow-y-auto scrollbar-thin py-6">
-              <Hero />
-              
-              {/* Quick Suggestion Cards Grid */}
-              <QuickActionCards onCardSelect={handleSendMessage} />
+              <Hero onPromptSelect={handleSendMessage} />
             </div>
           ) : (
-            /* Chat window message logs */
-            <div className="flex-1 flex flex-col min-h-0 bg-slate-950/20 border-x border-white/[0.02] max-w-5xl mx-auto w-full overflow-hidden">
+            /* Conversation Stream Window */
+            <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full overflow-hidden">
               <ChatWindow 
                 messages={messages} 
                 isLoading={isLoading} 
                 isStreaming={isStreaming} 
+                onAskTopic={handleSendMessage}
               />
             </div>
           )}
 
-          {/* Prompt Area fixed at bottom */}
-          <div className="w-full border-t border-white/5 bg-slate-950/80 backdrop-blur-md py-4 sm:py-6">
-            <div className="max-w-4xl mx-auto w-full px-4 flex flex-col">
+          {/* Prompt Dock Area */}
+          <div className="w-full border-t border-white/[0.06] bg-[#07080d]/80 backdrop-blur-xl py-3.5 sm:py-4">
+            <div className="max-w-3xl mx-auto w-full px-3 sm:px-4 flex flex-col">
               
-              {/* Floating Suggested Prompt Chips */}
+              {/* Contextual Suggested Prompt Chips */}
               {messages.length > 0 && !isGenerating && (
                 <SuggestedPrompts onSelectPrompt={handleSendMessage} />
               )}
 
-              {/* Input container bubble */}
-              <div className="relative glass-panel rounded-2xl p-1 bg-slate-900/40 focus-within:border-brand-purple/40 focus-within:shadow-glow-purple transition-all duration-300">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center">
+              {/* Developer Query Input Box */}
+              <div className="relative glass-panel rounded-2xl p-1 bg-[#0b0d18]/80 border border-white/[0.08] focus-within:border-indigo-500/50 focus-within:shadow-glow-indigo transition-all duration-200">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-end">
                   
-                  {/* Prompt Textarea */}
+                  {/* Textarea */}
                   <textarea
+                    ref={textareaRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder={
                       isGenerating
-                        ? "SQLSense AI is responding..."
-                        : "Ask a SQL question (e.g., 'What is a composite primary key?' or 'Write a self join query')..."
+                        ? "SQLSense AI is formulating response..."
+                        : "Ask a SQL question (e.g., 'Explain Window Functions' or 'Write a self join query')..."
                     }
                     rows={2}
                     disabled={isGenerating}
-                    className="flex-1 bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none px-4 py-3 text-slate-100 placeholder-slate-500 resize-none font-sans text-sm outline-none disabled:opacity-60"
+                    className="flex-1 bg-transparent border-0 focus:outline-none px-3.5 py-2.5 text-slate-100 placeholder-slate-500 resize-none font-sans text-xs sm:text-sm outline-none disabled:opacity-50"
                   />
 
-                  {/* Actions Bar */}
-                  <div className="flex items-center justify-between sm:justify-end gap-3 px-4 py-2.5 sm:py-0 border-t sm:border-t-0 border-white/5">
-                    {/* Log Downloads and shortcuts descriptors */}
-                    <div className="flex items-center gap-2">
-                      {messages.length > 0 && !isGenerating && (
-                        <button
-                          onClick={handleDownloadChat}
-                          className="p-2 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-colors"
-                          title="Download chat history"
-                        >
-                          <Download size={14} />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Submit Send Button */}
+                  {/* Actions & Submit Button */}
+                  <div className="flex items-center justify-between sm:justify-end gap-2 px-3 py-2 sm:py-2 border-t sm:border-t-0 border-white/[0.04]">
+                    {/* Send Button */}
                     <button
                       onClick={() => handleSendMessage(input)}
                       disabled={isGenerating || !input.trim()}
-                      className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold shadow-md transition-all duration-200 ${
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
                         input.trim() && !isGenerating
-                          ? 'bg-gradient-to-r from-brand-purple to-brand-blue text-white shadow-glow-purple active:scale-95 cursor-pointer'
-                          : 'bg-slate-800 text-slate-500 cursor-not-allowed border border-white/5 opacity-70'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-glow-indigo active:scale-95'
+                          : 'bg-white/[0.04] text-slate-500 cursor-not-allowed border border-white/[0.04]'
                       }`}
                     >
-                      <span>{isStreaming ? 'Responding...' : isLoading ? 'Thinking...' : 'Send'}</span>
+                      <span>{isStreaming ? 'Generating...' : isLoading ? 'Thinking...' : 'Send'}</span>
                       <Send size={12} className={isGenerating ? 'animate-pulse' : ''} />
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Shortcut labels disclaimer */}
-              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-600 font-light tracking-wide px-1">
-                <span>SQLSense AI utilizes a local SQL Knowledge Engine. Instant, reliable SQL assistance.</span>
-                <span className="hidden md:inline">Shortcuts: `Ctrl+F` Formatter • `Ctrl+H` Sidebar • `Ctrl+Q` Quiz • `Ctrl+P` Practice</span>
+              {/* Footer Meta & Keyboard Shortcuts */}
+              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 font-mono tracking-wide px-1 select-none">
+                <span className="truncate">Keyless SQL Knowledge Engine • Fast & Offline Ready</span>
+                <span className="hidden md:inline text-slate-600">
+                  Shortcuts: <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+F</kbd> Formatter • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+Q</kbd> Quiz • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+P</kbd> Practice
+                </span>
               </div>
 
             </div>
@@ -389,13 +381,24 @@ export default function App() {
 
       </div>
 
-      {/* About/Info Details Modal */}
-      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
-
-      {/* Bonus Feature Panels Modals */}
-      <FormatterModal isOpen={activeModal === 'formatter'} onClose={() => setActiveModal(null)} />
-      <QuizModal isOpen={activeModal === 'quiz'} onClose={() => setActiveModal(null)} />
-      <PracticeModal isOpen={activeModal === 'practice'} onClose={() => setActiveModal(null)} />
+      {/* Feature Modals */}
+      <AboutModal 
+        isOpen={isAboutOpen} 
+        onClose={() => setIsAboutOpen(false)} 
+        onSelectTopic={handleSendMessage}
+      />
+      <FormatterModal 
+        isOpen={activeModal === 'formatter'} 
+        onClose={() => setActiveModal(null)} 
+      />
+      <QuizModal 
+        isOpen={activeModal === 'quiz'} 
+        onClose={() => setActiveModal(null)} 
+      />
+      <PracticeModal 
+        isOpen={activeModal === 'practice'} 
+        onClose={() => setActiveModal(null)} 
+      />
       
     </div>
   );

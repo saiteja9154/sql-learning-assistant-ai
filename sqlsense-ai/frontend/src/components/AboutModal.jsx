@@ -1,134 +1,157 @@
 import React, { useEffect, useState } from 'react';
-import { X, Cpu, Database, BookOpen, Layers } from 'lucide-react';
+import { X, Layers, Database, Sparkles, Search, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import API_URL from '../apiConfig';
 
-export default function AboutModal({ isOpen, onClose }) {
+const FALLBACK_TOPICS = [
+  "Create Table", "Insert", "Update", "Delete", "Truncate", "Drop",
+  "Select", "Where", "Order By", "Group By", "Having", "Aggregate Functions",
+  "Primary Key", "Foreign Key", "Inner Join", "Left Join", "Right Join", 
+  "Full Join", "Cross Join", "Self Join", "Union", "Views",
+  "Indexes", "Normalization", "Subqueries", "CTE", "Window Functions",
+  "Transactions", "Stored Procedures", "Triggers"
+];
+
+export default function AboutModal({ isOpen, onClose, onSelectTopic }) {
   const [topics, setTopics] = useState([]);
-  
+  const [search, setSearch] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       fetch(`${API_URL}/about`)
         .then(res => res.json())
         .then(data => {
-          if (data.supported_topics) {
+          if (data.supported_topics && data.supported_topics.length > 0) {
             setTopics(data.supported_topics);
+          } else {
+            setTopics(FALLBACK_TOPICS);
           }
         })
-        .catch(err => {
-          // fallback if backend not running yet
-          setTopics([
-            "Select", "Where", "Group By", "Having", "Inner Join", "Left Join", 
-            "Self Join", "Subqueries", "CTE", "Window Functions", "Normalization",
-            "Indexes", "Transactions", "Stored Procedures", "Triggers"
-          ]);
+        .catch(() => {
+          setTopics(FALLBACK_TOPICS);
         });
     }
   }, [isOpen]);
 
+  if (!isOpen) return null;
+
+  const filteredTopics = (topics.length > 0 ? topics : fallbackTopics).filter(t => 
+    t.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
     <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-          />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="absolute inset-0 bg-black/75 backdrop-blur-md"
+        />
 
-          {/* Modal content */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', duration: 0.5 }}
-            className="relative w-full max-w-2xl bg-dark-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[85vh]"
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-white/5 bg-slate-950/40">
-              <div className="flex items-center gap-2">
-                <Layers size={18} className="text-brand-purple" />
-                <h2 className="text-lg font-bold text-slate-100">About SQLSense AI</h2>
+        {/* Modal Window */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 15 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+          className="relative w-full max-w-2xl bg-[#0b0d16] border border-white/[0.09] rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[85vh]"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#080a12]/70">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <Layers size={16} />
               </div>
-              <button
-                onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/5 text-slate-400 hover:text-slate-200 transition-all active:scale-95 duration-200"
-              >
-                <X size={18} />
-              </button>
+              <div>
+                <h2 className="text-sm font-bold text-white font-display">About SQLSense AI</h2>
+                <p className="text-[11px] text-slate-400 font-mono">Local RAG engine & loaded documentation</p>
+              </div>
             </div>
 
-            {/* Scrollable Body */}
-            <div className="p-6 overflow-y-auto space-y-6 scrollbar-thin">
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/[0.08] text-slate-400 hover:text-white transition-colors cursor-pointer"
+            >
+              <X size={16} />
+            </button>
+          </div>
+
+          {/* Architecture Highlights */}
+          <div className="p-5 border-b border-white/[0.06] bg-[#0a0c16]/50">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  Keyless Architecture
+                </div>
+                <p className="text-[11px] text-slate-400">Zero external API dependencies or rate limits.</p>
+              </div>
               
-              {/* Introduction */}
-              <div>
-                <p className="text-sm text-slate-300 font-light leading-relaxed">
-                  SQLSense AI is a professional-grade SQL learning assistant created for the <strong className="text-slate-100">K-Hub Senior Developer Intern Selection Task</strong>. It behaves as an expert database tutor, helping developers understand schemas, create complex joins, resolve query syntax issues, and prep for relational database interview questions.
-                </p>
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white mb-1">
+                  <Database size={12} className="text-indigo-400" />
+                  Local SQL Knowledge
+                </div>
+                <p className="text-[11px] text-slate-400">Curated Markdown docs with semantic scoring.</p>
               </div>
 
-              {/* Local Knowledge Engine Info Card */}
-              <div className="glass-card bg-brand-purple/5 border-brand-purple/20 flex gap-4 p-5 items-start">
-                <div className="p-2.5 rounded-xl bg-brand-purple/10 text-brand-purple border border-brand-purple/10">
-                  <Cpu size={20} className="animate-pulse" />
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-white mb-1">
+                  <Sparkles size={12} className="text-purple-400" />
+                  Realtime Assistance
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-slate-100 mb-1">Local SQL Knowledge Engine</h4>
-                  <p className="text-xs text-slate-300 font-light leading-relaxed">
-                    Powered by a lightweight, zero-latency local SQL knowledge engine indexing curated syntax guides, edge-case warnings, performance tips, and interview questions with zero external API dependencies.
-                  </p>
-                </div>
+                <p className="text-[11px] text-slate-400">Instant explanations, syntax, and practice.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Supported Topics Browser */}
+          <div className="p-5 overflow-y-auto flex-1 scrollbar-thin">
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-300 font-mono">
+                <span>Loaded Topics ({filteredTopics.length})</span>
               </div>
 
-              {/* Supported SQL Topics */}
-              <div>
-                <div className="flex items-center gap-2 mb-3.5">
-                  <BookOpen size={16} className="text-brand-blue" />
-                  <h3 className="text-sm font-semibold text-slate-200">Supported SQL Topics</h3>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {topics.map((topic, i) => (
-                    <span
-                      key={i}
-                      className="px-2.5 py-1 text-[11px] font-medium bg-slate-900 border border-white/5 rounded-lg text-slate-300 select-none shadow-sm hover:border-brand-blue/30 transition-all duration-300"
-                    >
-                      {topic}
-                    </span>
-                  ))}
-                </div>
+              {/* Topic Search */}
+              <div className="relative w-48">
+                <Search size={12} className="absolute left-2.5 top-2.5 text-slate-500" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Filter topics..."
+                  className="w-full bg-[#080a12] border border-white/[0.08] rounded-lg pl-7 pr-2.5 py-1 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500/40"
+                />
               </div>
-
-              {/* Project Tech Stack */}
-              <div>
-                <div className="flex items-center gap-2 mb-3.5">
-                  <Database size={16} className="text-brand-cyan" />
-                  <h3 className="text-sm font-semibold text-slate-200">Technologies Utilized</h3>
-                </div>
-                <div className="grid grid-cols-2 gap-4 text-xs font-light text-slate-300">
-                  <div className="flex flex-col p-3 rounded-xl bg-slate-900/40 border border-white/5">
-                    <span className="font-semibold text-slate-100 mb-0.5">Frontend Stack</span>
-                    <span>React, Vite, Tailwind CSS, Framer Motion, React Markdown, PrismJS</span>
-                  </div>
-                  <div className="flex flex-col p-3 rounded-xl bg-slate-900/40 border border-white/5">
-                    <span className="font-semibold text-slate-100 mb-0.5">Backend Stack</span>
-                    <span>FastAPI, Python 3, Uvicorn, Local SQL Knowledge Engine</span>
-                  </div>
-                </div>
-              </div>
-
             </div>
 
-            {/* Footer */}
-            <div className="p-4 bg-slate-950/40 border-t border-white/5 text-center text-[10px] text-slate-500 font-medium">
-              SQLSense AI • Developed as Selection Task Submission
+            {/* Topics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {filteredTopics.map((topic, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    if (onSelectTopic) {
+                      onSelectTopic(`Explain ${topic} in SQL with clear syntax, use cases, and an example query.`);
+                      onClose();
+                    }
+                  }}
+                  className="p-2 rounded-xl bg-white/[0.02] hover:bg-indigo-500/10 border border-white/[0.05] hover:border-indigo-500/30 text-left transition-all group flex items-center justify-between cursor-pointer"
+                >
+                  <span className="text-xs text-slate-300 group-hover:text-white truncate font-medium">
+                    {topic}
+                  </span>
+                  <ArrowRight size={11} className="text-slate-600 group-hover:text-indigo-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0" />
+                </button>
+              ))}
             </div>
-          </motion.div>
-        </div>
-      )}
+
+          </div>
+        </motion.div>
+      </div>
     </AnimatePresence>
   );
 }

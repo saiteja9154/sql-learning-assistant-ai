@@ -10,16 +10,16 @@ export default function SuggestedPrompts({ onSelectPrompt }) {
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 max-w-4xl mx-auto px-4 mb-2.5">
-      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider select-none pr-1">
-        <Sparkles size={11} className="text-brand-purple fill-brand-purple/20" />
-        <span>Try asking:</span>
+    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 max-w-4xl mx-auto px-2 mb-2 select-none">
+      <div className="flex items-center gap-1 text-[10px] font-semibold text-slate-500 uppercase tracking-wider font-mono pr-1">
+        <Sparkles size={10} className="text-indigo-400" />
+        <span>Try:</span>
       </div>
       {suggestions.map((s, idx) => (
         <button
           key={idx}
           onClick={() => onSelectPrompt(s)}
-          className="text-xs bg-slate-900 hover:bg-slate-800 border border-white/5 hover:border-brand-purple/30 rounded-full px-3 py-1 text-slate-400 hover:text-slate-200 transition-all duration-200 active:scale-95 shadow-sm"
+          className="text-[11px] bg-[#0e111d] hover:bg-[#161a2c] border border-white/[0.06] hover:border-indigo-500/30 rounded-lg px-2.5 py-1 text-slate-400 hover:text-white transition-all duration-150 active:scale-95 shadow-sm cursor-pointer truncate max-w-[280px]"
         >
           {s}
         </button>
