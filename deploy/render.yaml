@@ -3,6 +3,7 @@ services:
   - type: web
     name: sqlsense-ai
     runtime: python
+    rootDir: sqlsense-ai
     region: oregon
     plan: free
     

@@ -1,1 +1,1 @@
--r sqlsense-ai/backend/requirements.txt
+-r backend/requirements.txt
