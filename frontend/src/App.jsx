@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Send } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ArrowUp, Sparkles, Plus, Menu } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ChatWindow from './components/ChatWindow';
@@ -19,13 +19,31 @@ export default function App() {
   const [isAboutOpen, setIsAboutOpen] = useState(false);
 
   // Layout & Feature States
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return false;
+  });
   const [recentQuestions, setRecentQuestions] = useState([]);
   const [activeModal, setActiveModal] = useState(null); // 'formatter' | 'quiz' | 'practice' | null
   const [themeMode, setThemeMode] = useState('indigo'); // 'indigo' | 'slate'
 
   const streamIntervalRef = useRef(null);
   const textareaRef = useRef(null);
+
+  // Auto-resize input textarea to fit text naturally without clumsy scrollbars
+  const adjustTextareaHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const newHeight = Math.min(Math.max(el.scrollHeight, 40), 120);
+    el.style.height = `${newHeight}px`;
+  }, []);
+
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input, adjustTextareaHeight]);
 
   // Load recent questions from LocalStorage on mount
   useEffect(() => {
@@ -96,6 +114,11 @@ export default function App() {
     const query = (textToSend || input).trim();
     if (!query || isGenerating) return;
 
+    // On mobile, close sidebar if open
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+
     // Cancel any previous active streaming interval
     if (streamIntervalRef.current) {
       clearInterval(streamIntervalRef.current);
@@ -109,9 +132,12 @@ export default function App() {
 
     // Append user message
     const userMsgId = 'user-' + Date.now();
-    const userMessage = { id: userMsgId, role: 'user', content: query };
+    const userMessage = { id: userMsgId, role: 'user', content: query, timestamp: new Date() };
 
     setInput('');
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '40px';
+    }
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
@@ -135,7 +161,7 @@ export default function App() {
 
       // Natural thinking pause
       const elapsed = Date.now() - startTime;
-      const minThinkingTime = 320;
+      const minThinkingTime = 280;
       if (elapsed < minThinkingTime) {
         await new Promise((resolve) => setTimeout(resolve, minThinkingTime - elapsed));
       }
@@ -147,10 +173,10 @@ export default function App() {
 
       setMessages((prev) => [
         ...prev,
-        { id: assistantMsgId, role: 'assistant', content: '', isStreaming: true },
+        { id: assistantMsgId, role: 'assistant', content: '', isStreaming: true, timestamp: new Date() },
       ]);
 
-      // Progressive reveal
+      // Progressive typing reveal
       const len = fullReply.length;
       const chunkSize = len > 1200 ? 20 : len > 600 ? 12 : len > 200 ? 6 : 3;
       const tickInterval = 16;
@@ -189,8 +215,6 @@ export default function App() {
 
     } catch (error) {
       console.error('Failed to query backend:', error);
-      setErrorMessage("Could not connect to backend server.");
-      
       setIsLoading(false);
       setIsStreaming(false);
 
@@ -199,7 +223,8 @@ export default function App() {
         { 
           id: 'error-' + Date.now(),
           role: 'assistant', 
-          content: `⚠️ **Connection Error**\n\nI couldn't reach the local backend server.\n\n* **Is the FastAPI backend active?** Ensure the backend is running on the configured host/port.\n* **Network status:** Check your local connection.\n\nPlease try sending your message again.` 
+          content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server.\n\n* **Check Render Backend:** Ensure the service is active and ` + "`VITE_API_URL`" + ` is configured.\n* **Network status:** Check your internet connection.\n\nPlease try sending your message again.`,
+          timestamp: new Date()
         },
       ]);
     } finally {
@@ -208,6 +233,7 @@ export default function App() {
   };
 
   const handleKeyDown = (e) => {
+    // Submit on Enter without Shift (on desktop)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(input);
@@ -223,6 +249,9 @@ export default function App() {
     setInput('');
     setIsLoading(false);
     setIsStreaming(false);
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
   };
 
   const handleDeleteHistoryItem = (itemToDelete) => {
@@ -257,31 +286,46 @@ export default function App() {
   };
 
   return (
-    <div className={`h-screen flex bg-[#06070a] font-sans text-slate-100 overflow-hidden ${
+    <div className={`h-[100dvh] max-h-[100dvh] w-full flex bg-[#06070a] font-sans text-slate-100 overflow-hidden relative ${
       themeMode === 'slate' ? 'selection:bg-slate-700 selection:text-white' : 'selection:bg-indigo-500/30 selection:text-white'
     }`}>
       
-      {/* Collapsible Left Developer Sidebar */}
+      {/* Collapsible Left Developer Sidebar / Mobile Drawer */}
       <Sidebar 
         isOpen={sidebarOpen} 
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         recentQuestions={recentQuestions}
-        onSelectQuestion={handleSendMessage}
+        onSelectQuestion={(q) => {
+          handleSendMessage(q);
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
         onDeleteQuestion={handleDeleteHistoryItem}
         onClearHistory={handleClearHistory}
         onNewChat={handleClearChat}
-        onOpenFormatter={() => setActiveModal('formatter')}
-        onOpenQuiz={() => setActiveModal('quiz')}
-        onOpenPractice={() => setActiveModal('practice')}
-        onOpenAbout={() => setIsAboutOpen(true)}
+        onOpenFormatter={() => {
+          setActiveModal('formatter');
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
+        onOpenQuiz={() => {
+          setActiveModal('quiz');
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
+        onOpenPractice={() => {
+          setActiveModal('practice');
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
+        onOpenAbout={() => {
+          setIsAboutOpen(true);
+          if (window.innerWidth < 768) setSidebarOpen(false);
+        }}
         themeMode={themeMode}
         onToggleTheme={() => setThemeMode(t => t === 'indigo' ? 'slate' : 'indigo')}
       />
 
-      {/* Main Workspace Page Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative min-w-0">
+      {/* Main Chatbot Workspace Area */}
+      <div className="flex-1 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden relative min-w-0">
         
-        {/* Subtle Atmospheric Gradients */}
+        {/* Subtle Atmospheric Gradient */}
         <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ${
           themeMode === 'slate' 
             ? 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.05),rgba(255,255,255,0))]' 
@@ -298,18 +342,19 @@ export default function App() {
           sidebarOpen={sidebarOpen}
           themeMode={themeMode}
           onToggleTheme={() => setThemeMode(t => t === 'indigo' ? 'slate' : 'indigo')}
+          onOpenQuiz={() => setActiveModal('quiz')}
         />
 
-        {/* Main Canvas / Chat Workspace */}
-        <div className="flex-1 flex flex-col justify-between overflow-hidden relative z-10">
+        {/* Chat Stream / Landing Screen */}
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative z-10">
           {messages.length === 0 ? (
-            /* AI Assistant Landing State */
-            <div className="flex-1 flex flex-col justify-center overflow-y-auto scrollbar-thin py-6">
-              <Hero onPromptSelect={handleSendMessage} />
+            /* AI Assistant Mobile Landing View */
+            <div className="flex-1 overflow-y-auto scrollbar-thin px-2 sm:px-4 py-3 sm:py-6 flex flex-col">
+              <Hero onPromptSelect={handleSendMessage} onOpenQuiz={() => setActiveModal('quiz')} />
             </div>
           ) : (
-            /* Conversation Stream Window */
-            <div className="flex-1 flex flex-col min-h-0 max-w-4xl mx-auto w-full overflow-hidden">
+            /* Authentic Chatbot Message Stream */
+            <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
               <ChatWindow 
                 messages={messages} 
                 isLoading={isLoading} 
@@ -319,18 +364,18 @@ export default function App() {
             </div>
           )}
 
-          {/* Prompt Dock Area */}
-          <div className="w-full border-t border-white/[0.06] bg-[#07080d]/80 backdrop-blur-xl py-3.5 sm:py-4">
-            <div className="max-w-3xl mx-auto w-full px-3 sm:px-4 flex flex-col">
+          {/* Bottom Floating Chat Input Capsule */}
+          <footer className="w-full bg-gradient-to-t from-[#06070a] via-[#06070a]/95 to-transparent pt-2 pb-safe border-t border-white/[0.04]">
+            <div className="max-w-3xl mx-auto w-full px-2.5 sm:px-4 flex flex-col">
               
               {/* Contextual Suggested Prompt Chips */}
               {messages.length > 0 && !isGenerating && (
                 <SuggestedPrompts onSelectPrompt={handleSendMessage} />
               )}
 
-              {/* Developer Query Input Box */}
-              <div className="relative glass-panel rounded-2xl p-1 bg-[#0b0d18]/80 border border-white/[0.08] focus-within:border-indigo-500/50 focus-within:shadow-glow-indigo transition-all duration-200">
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-end">
+              {/* Chat Input Capsule */}
+              <div className="relative glass-panel rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 bg-[#0c0e18]/90 border border-white/[0.09] focus-within:border-indigo-500/60 focus-within:shadow-glow-indigo transition-all duration-200">
+                <div className="flex items-end gap-1.5 sm:gap-2">
                   
                   {/* Textarea */}
                   <textarea
@@ -340,44 +385,41 @@ export default function App() {
                     onKeyDown={handleKeyDown}
                     placeholder={
                       isGenerating
-                        ? "SQLSense AI is formulating response..."
-                        : "Ask a SQL question (e.g., 'Explain Window Functions' or 'Write a self join query')..."
+                        ? "Formulating SQL solution..."
+                        : "Ask any SQL question or query..."
                     }
-                    rows={2}
+                    rows={1}
                     disabled={isGenerating}
-                    className="flex-1 bg-transparent border-0 focus:outline-none px-3.5 py-2.5 text-slate-100 placeholder-slate-500 resize-none font-sans text-xs sm:text-sm outline-none disabled:opacity-50"
+                    className="flex-1 bg-transparent border-0 focus:outline-none px-2.5 sm:px-3 py-1.5 text-slate-100 placeholder-slate-500 resize-none font-sans text-[13px] sm:text-sm leading-relaxed max-h-[120px] min-h-[38px] disabled:opacity-50"
                   />
 
-                  {/* Actions & Submit Button */}
-                  <div className="flex items-center justify-between sm:justify-end gap-2 px-3 py-2 sm:py-2 border-t sm:border-t-0 border-white/[0.04]">
-                    {/* Send Button */}
-                    <button
-                      onClick={() => handleSendMessage(input)}
-                      disabled={isGenerating || !input.trim()}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all duration-200 cursor-pointer ${
-                        input.trim() && !isGenerating
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-glow-indigo active:scale-95'
-                          : 'bg-white/[0.04] text-slate-500 cursor-not-allowed border border-white/[0.04]'
-                      }`}
-                    >
-                      <span>{isStreaming ? 'Generating...' : isLoading ? 'Thinking...' : 'Send'}</span>
-                      <Send size={12} className={isGenerating ? 'animate-pulse' : ''} />
-                    </button>
-                  </div>
+                  {/* Circular Gradient Send Button */}
+                  <button
+                    onClick={() => handleSendMessage(input)}
+                    disabled={isGenerating || !input.trim()}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer ${
+                      input.trim() && !isGenerating
+                        ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-glow-indigo hover:scale-105 active:scale-95'
+                        : 'bg-white/[0.05] text-slate-500 cursor-not-allowed border border-white/[0.04]'
+                    }`}
+                    title="Send query"
+                  >
+                    <ArrowUp size={16} className={isGenerating ? 'animate-pulse' : 'stroke-[2.5]'} />
+                  </button>
                 </div>
               </div>
 
               {/* Footer Meta & Keyboard Shortcuts */}
-              <div className="mt-2 flex items-center justify-between text-[10px] text-slate-500 font-mono tracking-wide px-1 select-none">
-                <span className="truncate">Keyless SQL Knowledge Engine • Fast & Offline Ready</span>
-                <span className="hidden md:inline text-slate-600">
-                  Shortcuts: <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+F</kbd> Formatter • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+Q</kbd> Quiz • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+P</kbd> Practice
+              <div className="mt-1.5 hidden sm:flex items-center justify-between text-[10px] text-slate-500 font-mono tracking-wide px-1 select-none">
+                <span className="truncate">SQLSense AI • Keyless Intelligent Assistant</span>
+                <span className="text-slate-600">
+                  <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+F</kbd> Formatter • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+Q</kbd> Quiz
                 </span>
               </div>
 
             </div>
-          </div>
-        </div>
+          </footer>
+        </main>
 
       </div>
 

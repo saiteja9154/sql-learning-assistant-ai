@@ -30,21 +30,34 @@
 @layer base {
   * {
     border-color: rgba(255, 255, 255, 0.07);
+    -webkit-tap-highlight-color: transparent;
   }
   
-  body {
+  html, body {
+    height: 100%;
+    height: 100dvh;
     background-color: #06070a;
     color: #f1f5f9;
     font-family: var(--font-sans);
-    overflow-x: hidden;
+    overflow: hidden;
     letter-spacing: -0.01em;
+    touch-action: manipulation;
   }
+}
+
+/* Safe area insets for mobile devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 /* Custom Scrollbars */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -60,16 +73,25 @@
   background: rgba(255, 255, 255, 0.24);
 }
 
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Glassmorphism & Surface Utilities */
 .glass-panel {
-  background: rgba(11, 13, 20, 0.72);
+  background: rgba(11, 13, 20, 0.78);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .glass-panel-elevated {
-  background: rgba(16, 19, 30, 0.82);
+  background: rgba(16, 19, 30, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.09);
@@ -77,7 +99,7 @@
 }
 
 .glass-card {
-  background: rgba(16, 19, 30, 0.55);
+  background: rgba(16, 19, 30, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.06);
@@ -85,7 +107,7 @@
 }
 
 .glass-card-interactive {
-  background: rgba(16, 19, 30, 0.55);
+  background: rgba(16, 19, 30, 0.6);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.07);
@@ -93,17 +115,10 @@
 }
 
 .glass-card-interactive:hover {
-  background: rgba(22, 26, 41, 0.8);
+  background: rgba(22, 26, 41, 0.85);
   border-color: rgba(99, 102, 241, 0.35);
   box-shadow: 0 8px 24px -6px rgba(99, 102, 241, 0.18);
   transform: translateY(-2px);
-}
-
-.glass-input {
-  background: rgba(11, 13, 20, 0.6);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* AI Orb & Visual Identity Animation */
@@ -161,20 +176,35 @@
   }
 }
 
+/* Real Chatbot Speech Bubbles */
+.chat-bubble-user {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+  color: #ffffff;
+  border-radius: 18px 18px 4px 18px;
+  box-shadow: 0 4px 16px -2px rgba(79, 70, 229, 0.3);
+}
+
+.chat-bubble-assistant {
+  background: rgba(14, 17, 27, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 18px 18px 18px 4px;
+}
+
 /* Code & Markdown Custom Styling */
 .prose pre {
   background: #080a10 !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem;
-  padding: 1rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.75rem;
+  padding: 0.85rem;
+  margin-top: 0.6rem;
+  margin-bottom: 0.6rem;
   overflow-x: auto;
   font-family: var(--font-mono);
-  font-size: 0.84rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
 }
 
 .prose code {
   font-family: var(--font-mono);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
 }

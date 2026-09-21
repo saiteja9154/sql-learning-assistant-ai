@@ -241,14 +241,14 @@ export default function QuizModal({ isOpen, onClose }) {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="absolute inset-0 bg-black/75 backdrop-blur-md"
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
         />
 
         {/* Modal Window */}
@@ -257,7 +257,7 @@ export default function QuizModal({ isOpen, onClose }) {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-2xl bg-[#0b0d16] border border-white/[0.09] rounded-2xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90vh]"
+          className="relative w-full max-w-2xl bg-[#0b0d16] border border-white/[0.09] rounded-2xl sm:rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col max-h-[90dvh]"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#080a12]/70">

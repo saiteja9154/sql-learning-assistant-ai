@@ -1,88 +1,87 @@
 import React from 'react';
-import { Menu, RefreshCw, Download, Info, Sun, Moon } from 'lucide-react';
+import { Menu, Plus, Award, Info, Sun, Moon } from 'lucide-react';
 
 export default function Navbar({ 
   onClearChat, 
   hasMessages, 
-  onDownloadChat,
   onOpenAbout, 
   onToggleSidebar, 
   sidebarOpen,
   themeMode,
-  onToggleTheme 
+  onToggleTheme,
+  onOpenQuiz
 }) {
   return (
-    <header className="sticky top-0 z-30 w-full h-14 border-b border-white/[0.06] bg-[#07080c]/80 backdrop-blur-xl">
-      <div className="h-full px-3.5 sm:px-5 flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full h-13 sm:h-14 border-b border-white/[0.06] bg-[#07080c]/85 backdrop-blur-xl">
+      <div className="h-full px-2.5 sm:px-4 max-w-7xl mx-auto flex items-center justify-between">
         
-        {/* Left: Sidebar Toggle & Context Breadcrumb */}
-        <div className="flex items-center gap-3">
+        {/* Left: Sidebar Toggle & Brand Identity */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-white transition-colors cursor-pointer"
-            title={sidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}
+            className="p-2 rounded-xl hover:bg-white/[0.06] active:bg-white/[0.1] text-slate-300 hover:text-white transition-colors cursor-pointer"
+            title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+            aria-label="Toggle navigation menu"
           >
-            <Menu size={16} />
+            <Menu size={18} />
           </button>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium select-none">
-              <span className="text-white font-semibold flex items-center gap-1 font-display">
+            <div className="flex items-center gap-1.5 text-xs font-medium select-none">
+              <span className="text-white font-bold flex items-center gap-1 font-display tracking-tight text-sm">
                 <span className="text-indigo-400">◈</span> SQLSense
               </span>
-              <span className="text-slate-600">/</span>
-              <span className="text-slate-300">Workspace</span>
             </div>
 
-            <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-medium text-indigo-300">
+            <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] sm:text-[10px] font-medium text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>RAG Engine Ready</span>
+              <span className="hidden xs:inline font-mono">Ready</span>
             </div>
           </div>
         </div>
 
         {/* Right: Actions Bar */}
-        <div className="flex items-center gap-2">
-          {/* Download Conversation */}
-          {hasMessages && onDownloadChat && (
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* New Chat Quick Button */}
+          <button
+            onClick={onClearChat}
+            className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:scale-95 border border-white/[0.06] text-slate-300 hover:text-white transition-all cursor-pointer"
+            title="Start new conversation"
+          >
+            <Plus size={13} className="text-indigo-400" />
+            <span className="text-[11px] font-medium">New</span>
+          </button>
+
+          {/* Quick Quiz Mode Button */}
+          {onOpenQuiz && (
             <button
-              onClick={onDownloadChat}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-              title="Export Conversation Log (.txt)"
+              onClick={onOpenQuiz}
+              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 border border-cyan-500/20 text-cyan-300 transition-all cursor-pointer"
+              title="Practice with SQL Quizzes"
             >
-              <Download size={14} />
+              <Award size={12} />
+              <span className="text-[11px] font-medium">Quiz</span>
             </button>
           )}
+
+          {/* Docs Trigger */}
+          <button 
+            onClick={onOpenAbout}
+            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/[0.06] active:scale-95 text-slate-400 hover:text-white transition-all cursor-pointer"
+            title="About & SQL Topics"
+          >
+            <Info size={15} className="text-slate-300" />
+            <span className="hidden md:inline ml-1 text-[11px] font-medium">Docs</span>
+          </button>
 
           {/* Theme Visual Toggle */}
           <button
             onClick={onToggleTheme}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-            title="Toggle Visual Theme"
+            className="p-2 rounded-xl hover:bg-white/[0.06] active:scale-95 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+            title="Toggle theme style"
           >
-            {themeMode === 'indigo' ? <Moon size={14} /> : <Sun size={14} />}
+            {themeMode === 'indigo' ? <Moon size={15} /> : <Sun size={15} />}
           </button>
-
-          {/* Info / Docs Trigger */}
-          <button 
-            onClick={onOpenAbout}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.02] text-slate-300 hover:text-white transition-all cursor-pointer"
-          >
-            <Info size={13} className="text-indigo-400" />
-            <span className="hidden sm:inline text-[11px] font-medium">Docs</span>
-          </button>
-
-          {/* Reset / New Session */}
-          {hasMessages && (
-            <button
-              onClick={onClearChat}
-              className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-lg font-medium bg-white/[0.05] hover:bg-rose-500/20 text-slate-300 hover:text-rose-300 border border-white/[0.08] hover:border-rose-500/30 transition-all cursor-pointer"
-              title="Reset conversation"
-            >
-              <RefreshCw size={11} />
-              <span className="hidden sm:inline text-[11px]">Reset</span>
-            </button>
-          )}
         </div>
 
       </div>
