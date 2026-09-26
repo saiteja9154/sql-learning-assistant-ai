@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ArrowUp, Sparkles, Plus, Menu } from 'lucide-react';
+import { ArrowUp, Sparkles, Square } from 'lucide-react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import ChatWindow from './components/ChatWindow';
@@ -27,17 +27,18 @@ export default function App() {
   });
   const [recentQuestions, setRecentQuestions] = useState([]);
   const [activeModal, setActiveModal] = useState(null); // 'formatter' | 'quiz' | 'practice' | null
+  const [practiceInitialCode, setPracticeInitialCode] = useState('');
   const [themeMode, setThemeMode] = useState('indigo'); // 'indigo' | 'slate'
 
   const streamIntervalRef = useRef(null);
   const textareaRef = useRef(null);
 
-  // Auto-resize input textarea to fit text naturally without clumsy scrollbars
+  // Auto-resize input textarea
   const adjustTextareaHeight = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    const newHeight = Math.min(Math.max(el.scrollHeight, 40), 120);
+    const newHeight = Math.min(Math.max(el.scrollHeight, 40), 140);
     el.style.height = `${newHeight}px`;
   }, []);
 
@@ -69,13 +70,11 @@ export default function App() {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleShortcuts = (e) => {
-      // Esc closes all active modals
       if (e.key === 'Escape') {
         setActiveModal(null);
         setIsAboutOpen(false);
       }
       
-      // Ctrl / Cmd combinations
       if (e.ctrlKey || e.metaKey) {
         if (e.key.toLowerCase() === 'h') {
           e.preventDefault();
@@ -110,8 +109,18 @@ export default function App() {
 
   const isGenerating = isLoading || isStreaming;
 
+  const handleStopGeneration = () => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+    setIsStreaming(false);
+    setIsLoading(false);
+    setMessages(prev => prev.map(msg => ({ ...msg, isStreaming: false })));
+  };
+
   const handleSendMessage = async (textToSend) => {
-    const query = (textToSend || input).trim();
+    const query = (textToSend !== undefined ? textToSend : input).trim();
     if (!query || isGenerating) return;
 
     // On mobile, close sidebar if open
@@ -126,7 +135,7 @@ export default function App() {
     }
 
     // Update recent queries in state & LocalStorage
-    const updatedRecents = [query, ...recentQuestions.filter(q => q !== query)].slice(0, 10);
+    const updatedRecents = [query, ...recentQuestions.filter(q => q !== query)].slice(0, 15);
     setRecentQuestions(updatedRecents);
     localStorage.setItem('sqlsense_recent_queries', JSON.stringify(updatedRecents));
 
@@ -159,9 +168,9 @@ export default function App() {
       const data = await response.json();
       const fullReply = data.reply || "No response generated.";
 
-      // Natural thinking pause
+      // Natural pause
       const elapsed = Date.now() - startTime;
-      const minThinkingTime = 280;
+      const minThinkingTime = 250;
       if (elapsed < minThinkingTime) {
         await new Promise((resolve) => setTimeout(resolve, minThinkingTime - elapsed));
       }
@@ -178,8 +187,8 @@ export default function App() {
 
       // Progressive typing reveal
       const len = fullReply.length;
-      const chunkSize = len > 1200 ? 20 : len > 600 ? 12 : len > 200 ? 6 : 3;
-      const tickInterval = 16;
+      const chunkSize = len > 1200 ? 24 : len > 600 ? 14 : len > 200 ? 7 : 4;
+      const tickInterval = 14;
       let currentIndex = 0;
 
       await new Promise((resolve) => {
@@ -223,7 +232,7 @@ export default function App() {
         { 
           id: 'error-' + Date.now(),
           role: 'assistant', 
-          content: `⚠️ **Connection Error**\n\nI couldn't reach the backend server.\n\n* **Check Render Backend:** Ensure the service is active and ` + "`VITE_API_URL`" + ` is configured.\n* **Network status:** Check your internet connection.\n\nPlease try sending your message again.`,
+          content: `⚠️ **Connection Notice**\n\nI couldn't reach the backend server.\n\n* **Check Service:** Ensure the backend service is running and ` + "`VITE_API_URL`" + ` is configured.\n* **Network status:** Check your internet connection.\n\nPlease try sending your query again.`,
           timestamp: new Date()
         },
       ]);
@@ -233,7 +242,6 @@ export default function App() {
   };
 
   const handleKeyDown = (e) => {
-    // Submit on Enter without Shift (on desktop)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(input);
@@ -263,6 +271,12 @@ export default function App() {
   const handleClearHistory = () => {
     setRecentQuestions([]);
     localStorage.removeItem('sqlsense_recent_queries');
+  };
+
+  // Run in practice mode from code block
+  const handleRunInPractice = (code) => {
+    setPracticeInitialCode(code);
+    setActiveModal('practice');
   };
 
   // Download Chat Log Utility
@@ -325,11 +339,11 @@ export default function App() {
       {/* Main Chatbot Workspace Area */}
       <div className="flex-1 flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden relative min-w-0">
         
-        {/* Subtle Atmospheric Gradient */}
+        {/* Subtle Atmospheric Gradient Aura */}
         <div className={`absolute inset-0 pointer-events-none transition-all duration-700 ${
           themeMode === 'slate' 
-            ? 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.05),rgba(255,255,255,0))]' 
-            : 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(99,102,241,0.08),rgba(255,255,255,0))]'
+            ? 'bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.06),rgba(255,255,255,0))]' 
+            : 'bg-[radial-gradient(ellipse_90%_70%_at_50%_-15%,rgba(99,102,241,0.12),rgba(139,92,246,0.05),rgba(255,255,255,0))]'
         }`} />
 
         {/* Top Navbar */}
@@ -343,82 +357,107 @@ export default function App() {
           themeMode={themeMode}
           onToggleTheme={() => setThemeMode(t => t === 'indigo' ? 'slate' : 'indigo')}
           onOpenQuiz={() => setActiveModal('quiz')}
+          onOpenPractice={() => setActiveModal('practice')}
+          onOpenFormatter={() => setActiveModal('formatter')}
         />
 
         {/* Chat Stream / Landing Screen */}
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative z-10">
           {messages.length === 0 ? (
-            /* AI Assistant Mobile Landing View */
-            <div className="flex-1 overflow-y-auto scrollbar-thin px-2 sm:px-4 py-3 sm:py-6 flex flex-col">
-              <Hero onPromptSelect={handleSendMessage} onOpenQuiz={() => setActiveModal('quiz')} />
+            /* AI Assistant Real Chatbot Landing View (ChatGPT / Claude Style) */
+            <div className="flex-1 overflow-y-auto scrollbar-thin px-3 sm:px-6 py-4 sm:py-6 flex flex-col items-center justify-center">
+              <Hero 
+                onPromptSelect={handleSendMessage} 
+                onOpenQuiz={() => setActiveModal('quiz')}
+                onOpenPractice={() => setActiveModal('practice')}
+                onOpenFormatter={() => setActiveModal('formatter')}
+                input={input}
+                setInput={setInput}
+                onSendMessage={handleSendMessage}
+                isGenerating={isGenerating}
+              />
             </div>
           ) : (
-            /* Authentic Chatbot Message Stream */
+            /* Authentic Conversational Message Stream */
             <div className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
               <ChatWindow 
                 messages={messages} 
                 isLoading={isLoading} 
                 isStreaming={isStreaming} 
                 onAskTopic={handleSendMessage}
+                onRegenerate={handleSendMessage}
+                onRunInPractice={handleRunInPractice}
               />
             </div>
           )}
 
-          {/* Bottom Floating Chat Input Capsule */}
-          <footer className="w-full bg-gradient-to-t from-[#06070a] via-[#06070a]/95 to-transparent pt-2 pb-safe border-t border-white/[0.04]">
-            <div className="max-w-3xl mx-auto w-full px-2.5 sm:px-4 flex flex-col">
-              
-              {/* Contextual Suggested Prompt Chips */}
-              {messages.length > 0 && !isGenerating && (
-                <SuggestedPrompts onSelectPrompt={handleSendMessage} />
-              )}
+          {/* Bottom Floating Chat Input Bar (Active when in conversation) */}
+          {messages.length > 0 && (
+            <footer className="w-full bg-gradient-to-t from-[#06070a] via-[#06070a]/95 to-transparent pt-2 pb-safe border-t border-white/[0.05]">
+              <div className="max-w-3xl mx-auto w-full px-3 sm:px-6 flex flex-col">
+                
+                {/* Contextual Suggested Prompt Chips */}
+                {!isGenerating && (
+                  <SuggestedPrompts onSelectPrompt={handleSendMessage} />
+                )}
 
-              {/* Chat Input Capsule */}
-              <div className="relative glass-panel rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 bg-[#0c0e18]/90 border border-white/[0.09] focus-within:border-indigo-500/60 focus-within:shadow-glow-indigo transition-all duration-200">
-                <div className="flex items-end gap-1.5 sm:gap-2">
-                  
-                  {/* Textarea */}
-                  <textarea
-                    ref={textareaRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={
-                      isGenerating
-                        ? "Formulating SQL solution..."
-                        : "Ask any SQL question or query..."
-                    }
-                    rows={1}
-                    disabled={isGenerating}
-                    className="flex-1 bg-transparent border-0 focus:outline-none px-2.5 sm:px-3 py-1.5 text-slate-100 placeholder-slate-500 resize-none font-sans text-[13px] sm:text-sm leading-relaxed max-h-[120px] min-h-[38px] disabled:opacity-50"
-                  />
+                {/* Chat Input Capsule */}
+                <div className="relative glass-panel-elevated rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 bg-[#0a0d18]/95 border border-white/[0.1] focus-within:border-indigo-500/70 focus-within:shadow-glow-indigo transition-all duration-200">
+                  <div className="flex items-end gap-2">
+                    
+                    {/* Textarea */}
+                    <textarea
+                      ref={textareaRef}
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder={
+                        isGenerating
+                          ? "SQLSense AI is formulating solution..."
+                          : "Ask any SQL question, optimize query, or explain concepts..."
+                      }
+                      rows={1}
+                      disabled={isGenerating}
+                      className="flex-1 bg-transparent border-0 focus:outline-none px-3 py-2 text-slate-100 placeholder-slate-500 resize-none font-sans text-xs sm:text-sm leading-relaxed max-h-[140px] min-h-[40px] disabled:opacity-50"
+                    />
 
-                  {/* Circular Gradient Send Button */}
-                  <button
-                    onClick={() => handleSendMessage(input)}
-                    disabled={isGenerating || !input.trim()}
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer ${
-                      input.trim() && !isGenerating
-                        ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-glow-indigo hover:scale-105 active:scale-95'
-                        : 'bg-white/[0.05] text-slate-500 cursor-not-allowed border border-white/[0.04]'
-                    }`}
-                    title="Send query"
-                  >
-                    <ArrowUp size={16} className={isGenerating ? 'animate-pulse' : 'stroke-[2.5]'} />
-                  </button>
+                    {/* Action Button: Send or Stop */}
+                    {isGenerating ? (
+                      <button
+                        onClick={handleStopGeneration}
+                        className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 border border-rose-500/40 transition-all duration-200 cursor-pointer"
+                        title="Stop generating"
+                      >
+                        <Square size={13} className="fill-rose-400" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleSendMessage(input)}
+                        disabled={!input.trim()}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 cursor-pointer ${
+                          input.trim()
+                            ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-glow-indigo hover:scale-105 active:scale-95'
+                            : 'bg-white/[0.05] text-slate-500 cursor-not-allowed border border-white/[0.04]'
+                        }`}
+                        title="Send query (Enter)"
+                      >
+                        <ArrowUp size={16} className="stroke-[2.5]" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Footer Meta & Keyboard Shortcuts */}
-              <div className="mt-1.5 hidden sm:flex items-center justify-between text-[10px] text-slate-500 font-mono tracking-wide px-1 select-none">
-                <span className="truncate">SQLSense AI • Keyless Intelligent Assistant</span>
-                <span className="text-slate-600">
-                  <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+F</kbd> Formatter • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+Q</kbd> Quiz
-                </span>
-              </div>
+                {/* Footer Meta & Keyboard Hints */}
+                <div className="mt-1.5 hidden sm:flex items-center justify-between text-[10px] text-slate-500 font-mono tracking-wide px-1 select-none">
+                  <span className="truncate">SQLSense AI • Keyless Intelligent Assistant</span>
+                  <span className="text-slate-600">
+                    <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+F</kbd> Formatter • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+P</kbd> Practice • <kbd className="px-1 py-0.5 rounded bg-white/[0.04]">Ctrl+Q</kbd> Quiz
+                  </span>
+                </div>
 
-            </div>
-          </footer>
+              </div>
+            </footer>
+          )}
         </main>
 
       </div>
@@ -439,7 +478,11 @@ export default function App() {
       />
       <PracticeModal 
         isOpen={activeModal === 'practice'} 
-        onClose={() => setActiveModal(null)} 
+        onClose={() => {
+          setActiveModal(null);
+          setPracticeInitialCode('');
+        }} 
+        initialQuery={practiceInitialCode}
       />
       
     </div>

@@ -2,11 +2,17 @@ import React, { useState } from 'react';
 import { X, Check, Terminal, RefreshCw, AlertTriangle, Eye, Database } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function PracticeModal({ isOpen, onClose }) {
+export default function PracticeModal({ isOpen, onClose, initialQuery = '' }) {
   const [currentChallenge, setCurrentChallenge] = useState(0);
   const [userQuery, setUserQuery] = useState('');
   const [feedback, setFeedback] = useState(null); // { success: boolean, message: string }
   const [showSolution, setShowSolution] = useState(false);
+
+  React.useEffect(() => {
+    if (initialQuery) {
+      setUserQuery(initialQuery);
+    }
+  }, [initialQuery]);
 
   const mockSchema = {
     tableName: "Employees",

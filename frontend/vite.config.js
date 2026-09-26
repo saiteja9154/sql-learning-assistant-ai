@@ -6,10 +6,21 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': {
-        target: 'http://localhost:8001',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+      '/chat': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/quiz': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/about': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
+      },
+      '/health': {
+        target: 'http://localhost:8000',
+        changeOrigin: true
       }
     }
   }

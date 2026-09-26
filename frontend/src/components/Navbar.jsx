@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Plus, Award, Info, Sun, Moon } from 'lucide-react';
+import { Menu, Plus, Award, Info, Sun, Moon, Terminal, Code } from 'lucide-react';
 
 export default function Navbar({ 
   onClearChat, 
@@ -9,33 +9,35 @@ export default function Navbar({
   sidebarOpen,
   themeMode,
   onToggleTheme,
-  onOpenQuiz
+  onOpenQuiz,
+  onOpenPractice,
+  onOpenFormatter
 }) {
   return (
-    <header className="sticky top-0 z-30 w-full h-13 sm:h-14 border-b border-white/[0.06] bg-[#07080c]/85 backdrop-blur-xl">
-      <div className="h-full px-2.5 sm:px-4 max-w-7xl mx-auto flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full h-14 border-b border-white/[0.07] bg-[#07080e]/90 backdrop-blur-2xl">
+      <div className="h-full px-3 sm:px-6 max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Left: Sidebar Toggle & Brand Identity */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3.5">
           <button
             onClick={onToggleSidebar}
             className="p-2 rounded-xl hover:bg-white/[0.06] active:bg-white/[0.1] text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title={sidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+            title={sidebarOpen ? "Close sidebar (Ctrl+H)" : "Open sidebar (Ctrl+H)"}
             aria-label="Toggle navigation menu"
           >
             <Menu size={18} />
           </button>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <div className="flex items-center gap-1.5 text-xs font-medium select-none">
-              <span className="text-white font-bold flex items-center gap-1 font-display tracking-tight text-sm">
-                <span className="text-indigo-400">◈</span> SQLSense
+              <span className="text-white font-bold flex items-center gap-1.5 font-display tracking-tight text-sm sm:text-base">
+                <span className="text-indigo-400 text-sm">◈</span> SQLSense
               </span>
             </div>
 
-            <div className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] sm:text-[10px] font-medium text-emerald-400">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-[10px] font-medium text-emerald-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="hidden xs:inline font-mono">Ready</span>
+              <span className="font-mono">v2.0</span>
             </div>
           </div>
         </div>
@@ -45,40 +47,64 @@ export default function Navbar({
           {/* New Chat Quick Button */}
           <button
             onClick={onClearChat}
-            className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-xl bg-white/[0.04] hover:bg-white/[0.08] active:scale-95 border border-white/[0.06] text-slate-300 hover:text-white transition-all cursor-pointer"
-            title="Start new conversation"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-xl bg-white/[0.05] hover:bg-white/[0.09] active:scale-95 border border-white/[0.08] text-slate-200 hover:text-white transition-all cursor-pointer font-medium"
+            title="Start new conversation (Ctrl+N)"
           >
-            <Plus size={13} className="text-indigo-400" />
-            <span className="text-[11px] font-medium">New</span>
+            <Plus size={14} className="text-indigo-400 stroke-[2.5]" />
+            <span className="hidden xs:inline">New Chat</span>
           </button>
 
-          {/* Quick Quiz Mode Button */}
+          {/* Practice Challenges */}
+          {onOpenPractice && (
+            <button
+              onClick={onOpenPractice}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 active:scale-95 border border-indigo-500/25 text-indigo-300 hover:text-white transition-all cursor-pointer"
+              title="Practice SQL Challenges (Ctrl+P)"
+            >
+              <Terminal size={12} className="text-indigo-400" />
+              <span>Practice</span>
+            </button>
+          )}
+
+          {/* Quiz Mode Button */}
           {onOpenQuiz && (
             <button
               onClick={onOpenQuiz}
-              className="hidden sm:flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 border border-cyan-500/20 text-cyan-300 transition-all cursor-pointer"
-              title="Practice with SQL Quizzes"
+              className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 active:scale-95 border border-cyan-500/25 text-cyan-300 hover:text-white transition-all cursor-pointer"
+              title="Test with SQL Quizzes (Ctrl+Q)"
             >
-              <Award size={12} />
-              <span className="text-[11px] font-medium">Quiz</span>
+              <Award size={12} className="text-cyan-400" />
+              <span>Quiz</span>
+            </button>
+          )}
+
+          {/* Formatter Trigger */}
+          {onOpenFormatter && (
+            <button
+              onClick={onOpenFormatter}
+              className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-xl bg-purple-500/10 hover:bg-purple-500/20 active:scale-95 border border-purple-500/25 text-purple-300 hover:text-white transition-all cursor-pointer"
+              title="SQL Formatter & Beautifier (Ctrl+F)"
+            >
+              <Code size={12} className="text-purple-400" />
+              <span>Formatter</span>
             </button>
           )}
 
           {/* Docs Trigger */}
           <button 
             onClick={onOpenAbout}
-            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/[0.06] active:scale-95 text-slate-400 hover:text-white transition-all cursor-pointer"
-            title="About & SQL Topics"
+            className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl hover:bg-white/[0.06] active:scale-95 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+            title="About & Topics (Ctrl+I)"
           >
-            <Info size={15} className="text-slate-300" />
-            <span className="hidden md:inline ml-1 text-[11px] font-medium">Docs</span>
+            <Info size={15} />
+            <span className="hidden md:inline ml-1 text-xs">Docs</span>
           </button>
 
-          {/* Theme Visual Toggle */}
+          {/* Theme Switcher */}
           <button
             onClick={onToggleTheme}
             className="p-2 rounded-xl hover:bg-white/[0.06] active:scale-95 text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
-            title="Toggle theme style"
+            title="Toggle theme styling"
           >
             {themeMode === 'indigo' ? <Moon size={15} /> : <Sun size={15} />}
           </button>
