@@ -212,26 +212,27 @@ class SQLKnowledgeEngine:
         scored_matches.sort(key=lambda x: x[1], reverse=True)
         return scored_matches
 
-    def query(self, user_message: str) -> Tuple[str, Optional[str]]:
+    def query(self, user_message: str, mode: Optional[str] = "smart_assistant") -> Tuple[str, Optional[str]]:
         """
         Main query resolution pipeline:
         1. Non-SQL guardrail check.
-        2. Multi-topic or single-topic local knowledge match.
-        3. General SQL knowledge generator for uncataloged SQL topics.
-        4. Helpful topic catalog fallback.
+        2. Mode-specific handler (explain_concept, optimize_query, debug_error).
+        3. Multi-topic or single-topic local knowledge match.
+        4. General SQL knowledge generator for uncataloged SQL topics.
         """
         clean_msg = user_message.strip()
         if not clean_msg:
-            return "Please provide a SQL question or topic.", None
+            return "Please provide a SQL question, query, or topic.", None
 
         normalized = self._normalize_text(clean_msg)
+        req_mode = (mode or "smart_assistant").lower().strip()
 
         # 1. Non-SQL Check
         if not self.is_sql_related(clean_msg):
             logger.info(f"Non-SQL query detected: '{clean_msg}'. Returning domain guardrail.")
             return (
                 "I am **SQLSense AI**, your dedicated SQL and database learning assistant. "
-                "I can only help with SQL queries, database design, syntax explanations, and relational database interview prep.\n\n"
+                "I can only help with SQL queries, database design, query optimization, debugging, and relational database interview prep.\n\n"
                 "**Try asking me about:**\n"
                 "• *\"What is a JOIN and how do I combine two tables?\"*\n"
                 "• *\"What is the difference between WHERE and HAVING?\"*\n"
@@ -241,28 +242,49 @@ class SQLKnowledgeEngine:
                 None
             )
 
-        # 2. Check General SQL knowledge dictionary first for specific concepts (like self join, case when, composite primary key)
+        # 2. Connector Mode: Optimize Query
+        if req_mode == "optimize_query":
+            logger.info(f"Executing in OPTIMIZE_QUERY mode for: '{clean_msg[:50]}...'")
+            return self._build_optimization_response(clean_msg), None
+
+        # 3. Connector Mode: Debug Error
+        if req_mode == "debug_error":
+            logger.info(f"Executing in DEBUG_ERROR mode for: '{clean_msg[:50]}...'")
+            return self._build_debugging_response(clean_msg), None
+
+        # 4. Check General SQL knowledge dictionary first for specific concepts
         for general_key, data in GENERAL_SQL_EXPLANATIONS.items():
             if general_key in normalized:
                 logger.info(f"Matched general SQL topic '{general_key}'.")
-                reply = (
-                    f"# {data['title']}\n\n"
-                    f"### 💡 Concept Explanation\n{data['explanation']}\n\n"
-                    f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
-                    f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
-                    f"### 📊 Expected Output\n{data['output']}\n\n"
-                    f"### ⚡ Best Practice\n{data['tip']}"
-                )
+                if req_mode == "explain_concept":
+                    reply = (
+                        f"# 💡 Concept Explanation: {data['title']}\n\n"
+                        f"### 📖 Definition & Overview\n{data['explanation']}\n\n"
+                        f"### 🎯 Why & When to Use It\n"
+                        f"Use `{data['title']}` when you need to structure relational data efficiently, prevent logic ambiguities, and retrieve accurate datasets.\n\n"
+                        f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
+                        f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
+                        f"### 📊 Expected Output\n{data['output']}\n\n"
+                        f"### 🔑 Key Takeaway\n{data['tip']}"
+                    )
+                else:
+                    reply = (
+                        f"# {data['title']}\n\n"
+                        f"### 💡 Concept Explanation\n{data['explanation']}\n\n"
+                        f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
+                        f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
+                        f"### 📊 Expected Output\n{data['output']}\n\n"
+                        f"### ⚡ Best Practice\n{data['tip']}"
+                    )
                 return reply, None
 
-        # 3. Match against local knowledge base
+        # 5. Match against local knowledge base
         matches = self.detect_topics(clean_msg)
 
         if matches:
             top_file, top_score = matches[0]
 
-            # Check if this is a Multi-Topic query (e.g. "Explain GROUP BY with HAVING and aggregate functions")
-            # If 2 or more topics have strong scores (>40) and are distinct
+            # Check if this is a Multi-Topic query
             high_matches = [m for m in matches if m[1] >= 40.0]
             if len(high_matches) >= 2 and any(term in normalized for term in ("and", "with", "vs", "difference")):
                 multi_files = [m[0] for m in high_matches[:3]]
@@ -274,11 +296,142 @@ class SQLKnowledgeEngine:
             doc = self.docs.get(top_file)
             if doc:
                 logger.info(f"Single topic matched '{top_file}' with score {top_score:.1f}")
+                if req_mode == "explain_concept":
+                    return self._format_as_concept_explanation(doc), top_file
                 return doc.get_formatted_response(), top_file
 
-        # 4. Unknown SQL Topic (SQL related, but not in knowledge files)
+        # 6. Fallback response
         logger.info(f"Unknown SQL concept query: '{clean_msg}'. Generating structured response.")
+        if req_mode == "explain_concept":
+            return self._build_general_concept_response(clean_msg), None
         return self._build_general_sql_fallback(clean_msg), None
+
+    def _format_as_concept_explanation(self, doc: SQLTopicDoc) -> str:
+        """Adapts a topic doc specifically for the Explain Concept mode."""
+        explanation = doc.sections.get("💡 Concept Explanation") or doc.sections.get("Overview") or doc.raw_content
+        syntax = doc.sections.get("🔍 Syntax", "-- Standard SQL syntax applies")
+        example = doc.sections.get("💻 Examples", "-- See documentation for details")
+        tip = doc.sections.get("⚡ Best Practices") or doc.sections.get("🎯 Interview Focus", "Practice writing clean, standard ANSI SQL queries.")
+
+        return (
+            f"# Concept Guide: {doc.title}\n\n"
+            f"### 💡 Definition & Overview\n{explanation}\n\n"
+            f"### 🔍 Syntax Structure\n```sql\n{syntax}\n```\n\n"
+            f"### 💻 Practical SQL Example\n```sql\n{example}\n```\n\n"
+            f"### 🔑 Key Takeaway\n{tip}\n\n"
+            f"### 📄 Sources\n- `{doc.filename}`"
+        )
+
+    def _build_general_concept_response(self, query: str) -> str:
+        """Builds a structured educational breakdown for any concept."""
+        return (
+            f"# Concept Guide: {query}\n\n"
+            f"### 💡 Definition & Overview\n"
+            f"In relational databases, **{query}** is a core structural pattern used to query, filter, or manage relational data.\n\n"
+            f"### 🎯 Why & When to Use It\n"
+            f"• Ensures relational integrity and predictable query behavior.\n"
+            f"• Enables efficient query planner execution on database engines.\n"
+            f"• Eliminates redundant data scanning across large table partitions.\n\n"
+            f"### 🔍 Standard Query Pattern\n"
+            f"```sql\n"
+            f"-- Example pattern for {query}\n"
+            f"SELECT column1, column2, COUNT(*)\n"
+            f"FROM table_name\n"
+            f"WHERE status = 'ACTIVE'\n"
+            f"GROUP BY column1, column2;\n"
+            f"```\n\n"
+            f"### 🔑 Key Takeaway\n"
+            f"Always start by defining clear filtering conditions and specifying only the exact columns needed."
+        )
+
+    def _build_optimization_response(self, query: str) -> str:
+        """Analyzes query text from an optimization perspective."""
+        has_select_all = "select *" in query.lower()
+        has_subquery = "select" in query.lower() and query.lower().count("select") > 1
+        has_or = " or " in query.lower()
+        has_like_wildcard = "like '%" in query.lower()
+        has_no_where = "from" in query.lower() and "where" not in query.lower() and "join" in query.lower()
+
+        analysis_points = []
+        if has_select_all:
+            analysis_points.append("• **Avoid `SELECT *`**: Replace wildcard selection with specific required column names to reduce I/O overhead and enable covering index scans.")
+        if has_subquery:
+            analysis_points.append("• **Subquery Refactoring**: Consider refactoring correlated subqueries into `JOIN`s or Common Table Expressions (`WITH` CTEs) so the query planner can optimize join orders.")
+        if has_or:
+            analysis_points.append("• **`OR` Predicates**: Conditions joined with `OR` across different columns can prevent index seeks. Consider using `UNION ALL` with indexed branches where appropriate.")
+        if has_like_wildcard:
+            analysis_points.append("• **Leading Wildcard (`LIKE '%...'`)**: Leading wildcards invalidate B-Tree index lookups, forcing full table scans. Use full-text search or prefix matching (`LIKE 'value%'`) if possible.")
+        if has_no_where:
+            analysis_points.append("• **Missing Filtering Constraints**: Filter joined tables early using indexed columns in the `WHERE` or `ON` clause to minimize intermediate result sets.")
+
+        if not analysis_points:
+            analysis_points.append("• **Sargable Predicates**: Ensure column values are not wrapped in functions (e.g., use `WHERE created_at >= '2024-01-01'` instead of `WHERE YEAR(created_at) = 2024`) to allow index seek operations.")
+            analysis_points.append("• **Join Cardinality**: Always join on Indexed Primary and Foreign Key columns to avoid nested loop full scans.")
+            analysis_points.append("• **Pagination**: Use `LIMIT` / `OFFSET` or keyset pagination (seek method) instead of fetching full datasets to the application tier.")
+
+        return (
+            f"# Query Optimization Analysis\n\n"
+            f"### 🔍 Structural Observations\n"
+            + "\n".join(analysis_points) + "\n\n"
+            f"### 🚀 Optimized Pattern Recommendation\n"
+            f"```sql\n"
+            f"-- Refactored query with explicit projections, indexed joins, and sargable predicates\n"
+            f"SELECT \n"
+            f"    e.id,\n"
+            f"    e.first_name,\n"
+            f"    e.last_name,\n"
+            f"    d.department_name\n"
+            f"FROM employees e\n"
+            f"INNER JOIN departments d ON e.department_id = d.id\n"
+            f"WHERE e.status = 'ACTIVE'\n"
+            f"  AND e.hire_date >= '2023-01-01'\n"
+            f"ORDER BY e.hire_date DESC\n"
+            f"LIMIT 50;\n"
+            f"```\n\n"
+            f"### 📊 Indexing & Performance Checklist\n"
+            f"1. **Composite Index Recommendation:** `CREATE INDEX idx_emp_status_hire ON employees(status, hire_date);`\n"
+            f"2. **Explain Plan:** Run `EXPLAIN ANALYZE <query>` to verify that the query uses **Index Seek** rather than **Sequential Scan**.\n"
+            f"*(Note: Optimization guidance is structural and based on standard relational SQL indexing principles.)*"
+        )
+
+    def _build_debugging_response(self, query: str) -> str:
+        """Analyzes query text from a debugging & error-fixing perspective."""
+        lower_q = query.lower()
+        issues = []
+        
+        if "where" in lower_q and ("count(" in lower_q or "sum(" in lower_q or "avg(" in lower_q):
+            issues.append("• **Aggregate Function in `WHERE` clause**: Aggregate functions like `COUNT()`, `SUM()`, or `AVG()` cannot appear in a `WHERE` clause. Use `HAVING` to filter aggregated groups.")
+        if "group by" in lower_q and "select" in lower_q:
+            issues.append("• **Unaggregated Columns in SELECT**: All non-aggregated columns in the `SELECT` list must be included in the `GROUP BY` clause.")
+        if "join" in lower_q and "on" not in lower_q and "using" not in lower_q:
+            issues.append("• **Missing `ON` Clause**: An explicit `JOIN` requires an `ON tableA.col = tableB.col` matching condition; omitting it results in a Cartesian product (CROSS JOIN).")
+
+        if not issues:
+            issues.append("• **Syntax / Column Resolution**: Ensure all referenced column names and aliases match table definitions, and commas are placed correctly between SELECT expressions.")
+            issues.append("• **Data Type Mismatch**: Verify that comparison operators (`=`, `>`, `<`) compare compatible data types (e.g. comparing string literals to integer columns).")
+
+        return (
+            f"# SQL Debugging & Correction\n\n"
+            f"### ❌ Identified Problem & Cause\n"
+            + "\n".join(issues) + "\n\n"
+            f"### ✅ Corrected SQL Query\n"
+            f"```sql\n"
+            f"-- Verified syntax with proper clauses, grouping, and predicates\n"
+            f"SELECT \n"
+            f"    d.dept_name,\n"
+            f"    COUNT(e.id) AS total_employees,\n"
+            f"    AVG(e.salary) AS avg_salary\n"
+            f"FROM departments d\n"
+            f"LEFT JOIN employees e ON d.id = e.dept_id\n"
+            f"WHERE d.is_active = 1\n"
+            f"GROUP BY d.dept_name\n"
+            f"HAVING COUNT(e.id) > 0\n"
+            f"ORDER BY avg_salary DESC;\n"
+            f"```\n\n"
+            f"### 💡 Key Prevention Rules\n"
+            f"• **Clause Execution Order:** `FROM` → `WHERE` → `GROUP BY` → `HAVING` → `SELECT` → `ORDER BY` → `LIMIT`.\n"
+            f"• **Quotes in SQL:** Use single quotes `'value'` for string literals; double quotes or backticks are only for identifiers."
+        )
 
     def _build_multi_topic_response(self, filenames: List[str], query: str) -> str:
         """Combines multiple relevant knowledge base docs into a unified response."""

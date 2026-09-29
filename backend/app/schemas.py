@@ -7,10 +7,12 @@ class Message(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    mode: Optional[str] = "smart_assistant"  # "smart_assistant" | "explain_concept" | "optimize_query" | "debug_error"
 
 class ChatResponse(BaseModel):
     reply: str
     context_used: Optional[str] = None
+    mode: Optional[str] = "smart_assistant"
 
 class AboutResponse(BaseModel):
     app_name: str

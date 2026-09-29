@@ -1,0 +1,10 @@
+/* AnimatedList custom sleek row styles for SQLSense AI Sidebar */
+.animated-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.animated-list-container:focus-visible {
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.4);
+  border-radius: 0.5rem;
+}

@@ -85,12 +85,13 @@ def chat_endpoint(request: ChatRequest):
     if not request.message or not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
         
-    logger.info(f"Processing query: '{request.message[:60]}...'")
-    reply, source = sql_engine.query(request.message)
+    logger.info(f"Processing query: '{request.message[:60]}...' (Mode: {request.mode})")
+    reply, source = sql_engine.query(request.message, mode=request.mode)
     
     return ChatResponse(
         reply=reply,
-        context_used=source
+        context_used=source,
+        mode=request.mode
     )
 
 @app.get("/quiz", response_model=QuizResponse, tags=["Quiz"])
