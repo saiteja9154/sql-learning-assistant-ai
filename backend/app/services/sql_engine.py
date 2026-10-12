@@ -838,54 +838,172 @@ class SQLKnowledgeEngine:
         return self._build_general_sql_fallback(query), None
 
     def _build_optimization_response(self, query: str) -> str:
-        """Analyzes query text from an optimization perspective."""
-        has_select_all = "select *" in query.lower()
-        has_subquery = "select" in query.lower() and query.lower().count("select") > 1
-        has_or = " or " in query.lower()
-        has_like_wildcard = "like '%" in query.lower()
-        has_no_where = "from" in query.lower() and "where" not in query.lower() and "join" in query.lower()
+        """
+        Generates ONLY the relevant SQL query for the requested requirement.
+        Strict output rules:
+        - Return the SQL query only inside a single ```sql code block.
+        - No titles, headings, introductions, checklists, structural analysis, or takeaways.
+        - Supports both natural-language requirements and existing SQL query optimizations.
+        """
+        raw = query.strip()
+        low = raw.lower()
 
-        analysis_points = []
-        if has_select_all:
-            analysis_points.append("• **Avoid `SELECT *`**: Replace wildcard selection with specific required column names to reduce I/O overhead and enable covering index scans.")
-        if has_subquery:
-            analysis_points.append("• **Subquery Refactoring**: Consider refactoring correlated subqueries into `JOIN`s or Common Table Expressions (`WITH` CTEs) so the query planner can optimize join orders.")
-        if has_or:
-            analysis_points.append("• **`OR` Predicates**: Conditions joined with `OR` across different columns can prevent index seeks. Consider using `UNION ALL` with indexed branches where appropriate.")
-        if has_like_wildcard:
-            analysis_points.append("• **Leading Wildcard (`LIKE '%...'`)**: Leading wildcards invalidate B-Tree index lookups, forcing full table scans. Use full-text search or prefix matching (`LIKE 'value%'`) if possible.")
-        if has_no_where:
-            analysis_points.append("• **Missing Filtering Constraints**: Filter joined tables early using indexed columns in the `WHERE` or `ON` clause to minimize intermediate result sets.")
+        def _wrap_sql(sql_code: str) -> str:
+            cleaned = sql_code.strip().rstrip(";")
+            return f"```sql\n{cleaned};\n```"
 
-        if not analysis_points:
-            analysis_points.append("• **Sargable Predicates**: Ensure column values are not wrapped in functions (e.g., use `WHERE created_at >= '2024-01-01'` instead of `WHERE YEAR(created_at) = 2024`) to allow index seek operations.")
-            analysis_points.append("• **Join Cardinality**: Always join on Indexed Primary and Foreign Key columns to avoid nested loop full scans.")
-            analysis_points.append("• **Pagination**: Use `LIMIT` / `OFFSET` or keyset pagination (seek method) instead of fetching full datasets to the application tier.")
+        # Known schemas for accurate entity handling
+        known_schemas: Dict[str, List[str]] = {
+            "employees": ["id", "first_name", "last_name", "email", "salary", "department_id", "hire_date", "status"],
+            "students": ["student_id", "first_name", "last_name", "email", "marks", "grade", "enrollment_date", "status"],
+            "departments": ["id", "department_name", "manager_id"],
+            "orders": ["order_id", "customer_id", "order_date", "total_amount", "status"],
+            "customers": ["customer_id", "name", "email", "phone", "city"],
+            "products": ["product_id", "product_name", "category_id", "price", "stock_quantity"],
+            "users": ["id", "username", "email", "created_at", "status"]
+        }
 
-        return (
-            f"# Query Optimization Analysis\n\n"
-            f"### 🔍 Structural Observations\n"
-            + "\n".join(analysis_points) + "\n\n"
-            f"### 🚀 Optimized Pattern Recommendation\n"
-            f"```sql\n"
-            f"-- Refactored query with explicit projections, indexed joins, and sargable predicates\n"
-            f"SELECT \n"
-            f"    e.id,\n"
-            f"    e.first_name,\n"
-            f"    e.last_name,\n"
-            f"    d.department_name\n"
-            f"FROM employees e\n"
-            f"INNER JOIN departments d ON e.department_id = d.id\n"
-            f"WHERE e.status = 'ACTIVE'\n"
-            f"  AND e.hire_date >= '2023-01-01'\n"
-            f"ORDER BY e.hire_date DESC\n"
-            f"LIMIT 50;\n"
-            f"```\n\n"
-            f"### 📊 Indexing & Performance Checklist\n"
-            f"1. **Composite Index Recommendation:** `CREATE INDEX idx_emp_status_hire ON employees(status, hire_date);`\n"
-            f"2. **Explain Plan:** Run `EXPLAIN ANALYZE <query>` to verify that the query uses **Index Seek** rather than **Sequential Scan**.\n"
-            f"*(Note: Optimization guidance is structural and based on standard relational SQL indexing principles.)*"
-        )
+        # 1. Check if user provided an existing SQL query to optimize
+        stripped = re.sub(
+            r"^(?:please\s+)?(?:optimize|tune|improve|refactor)\s+(?:this\s+)?(?:query|sql)?\s*[:\-]?\s*",
+            "",
+            raw,
+            flags=re.IGNORECASE
+        ).strip()
+        stripped = re.sub(r"^```(?:sql)?\s*", "", stripped, flags=re.IGNORECASE)
+        stripped = re.sub(r"\s*```$", "", stripped, flags=re.IGNORECASE).strip()
+
+        first_token = stripped.split()[0].upper() if stripped.split() else ""
+        if first_token in ("SELECT", "WITH", "UPDATE", "DELETE", "INSERT", "CREATE", "ALTER", "DROP"):
+            sql_text = stripped
+            # Optimize SELECT * for known tables
+            for tbl, cols in known_schemas.items():
+                pattern = rf"\bselect\s+\*\s+from\s+{tbl}\b"
+                if re.search(pattern, sql_text, re.IGNORECASE):
+                    proj = ", ".join(cols[:5])
+                    sql_text = re.sub(pattern, f"SELECT {proj}\nFROM {tbl}", sql_text, flags=re.IGNORECASE)
+                    break
+
+            # Format clauses on separate lines for clean readability
+            sql_text = re.sub(r"\s+where\b", "\nWHERE", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+order by\b", "\nORDER BY", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+group by\b", "\nGROUP BY", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+having\b", "\nHAVING", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+limit\b", "\nLIMIT", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+inner join\b", "\nINNER JOIN", sql_text, flags=re.IGNORECASE)
+            sql_text = re.sub(r"\s+left join\b", "\nLEFT JOIN", sql_text, flags=re.IGNORECASE)
+
+            # Optimize non-sargable YEAR(col) = YYYY
+            year_match = re.search(r"\byear\s*\(\s*(\w+)\s*\)\s*=\s*(\d{4})\b", sql_text, re.IGNORECASE)
+            if year_match:
+                col, y = year_match.group(1), int(year_match.group(2))
+                sql_text = re.sub(
+                    rf"\byear\s*\(\s*{col}\s*\)\s*=\s*{y}\b",
+                    f"{col} >= '{y}-01-01' AND {col} < '{y+1}-01-01'",
+                    sql_text,
+                    flags=re.IGNORECASE
+                )
+
+            return _wrap_sql(sql_text)
+
+        # 2. Natural language requirement handling
+        norm = re.sub(
+            r"^(?:give|get|show|write|provide|find|display|return|list)\s+(?:me\s+)?(?:the\s+)?(?:query|sql)?\s*(?:for|to|of)?\s*",
+            "",
+            low
+        ).strip()
+
+        # Active students / records
+        if "active student" in norm or ("student" in norm and "status = 'active'" in norm):
+            return _wrap_sql("SELECT *\nFROM students\nWHERE status = 'active'")
+        if "inactive student" in norm:
+            return _wrap_sql("SELECT *\nFROM students\nWHERE status = 'inactive'")
+        if "active employee" in norm:
+            return _wrap_sql("SELECT *\nFROM employees\nWHERE status = 'active'")
+
+        # Extremes: Highest / Lowest / Maximum / Minimum
+        if any(p in norm for p in ["highest salary", "maximum salary", "max salary"]):
+            return _wrap_sql("SELECT MAX(salary) AS highest_salary\nFROM employees")
+        if any(p in norm for p in ["lowest salary", "minimum salary", "min salary"]):
+            return _wrap_sql("SELECT MIN(salary) AS lowest_salary\nFROM employees")
+        if any(p in norm for p in ["highest mark", "highest score", "max mark", "maximum mark"]):
+            return _wrap_sql("SELECT MAX(marks) AS highest_marks\nFROM students")
+        if any(p in norm for p in ["lowest mark", "lowest score", "min mark", "minimum mark"]):
+            return _wrap_sql("SELECT MIN(marks) AS lowest_marks\nFROM students")
+        if any(p in norm for p in ["highest price", "maximum price", "most expensive"]):
+            return _wrap_sql("SELECT MAX(price) AS highest_price\nFROM products")
+        if any(p in norm for p in ["lowest price", "cheapest product"]):
+            return _wrap_sql("SELECT MIN(price) AS lowest_price\nFROM products")
+
+        # Department aggregations
+        if ("employee" in norm or "staff" in norm) and "department" in norm and any(w in norm for w in ["count", "total", "number", "every", "each"]):
+            return _wrap_sql("SELECT department_id, COUNT(*) AS total_employees\nFROM employees\nGROUP BY department_id")
+        if "department" in norm and any(w in norm for w in ["average salary", "avg salary"]):
+            return _wrap_sql("SELECT department_id, AVG(salary) AS avg_salary\nFROM employees\nGROUP BY department_id")
+        if "department" in norm and any(w in norm for w in ["total salary", "salary sum", "payroll"]):
+            return _wrap_sql("SELECT department_id, SUM(salary) AS total_payroll\nFROM employees\nGROUP BY department_id")
+
+        # Second highest salary
+        if "second highest salary" in norm or "2nd highest salary" in norm:
+            return _wrap_sql("SELECT MAX(salary) AS second_highest_salary\nFROM employees\nWHERE salary < (\n    SELECT MAX(salary)\n    FROM employees\n)")
+
+        # Top N limits
+        top_match = re.search(r"top\s+(\d+)\s+salaries", norm)
+        if top_match:
+            n = top_match.group(1)
+            return _wrap_sql(f"SELECT id, first_name, last_name, salary\nFROM employees\nORDER BY salary DESC\nLIMIT {n}")
+        if "top 5 salaries" in norm or "top 5 highest paid" in norm:
+            return _wrap_sql("SELECT id, first_name, last_name, salary\nFROM employees\nORDER BY salary DESC\nLIMIT 5")
+
+        # Counts / Totals
+        if "student" in norm and any(w in norm for w in ["total", "count", "number", "how many"]):
+            return _wrap_sql("SELECT COUNT(*) AS total_students\nFROM students")
+        if "employee" in norm and any(w in norm for w in ["total", "count", "number", "how many"]):
+            return _wrap_sql("SELECT COUNT(*) AS total_employees\nFROM employees")
+        if "order" in norm and any(w in norm for w in ["total", "count", "number", "how many"]):
+            return _wrap_sql("SELECT COUNT(*) AS total_orders\nFROM orders")
+        if "customer" in norm and any(w in norm for w in ["total", "count", "number", "how many"]):
+            return _wrap_sql("SELECT COUNT(*) AS total_customers\nFROM customers")
+
+        # Averages / Sums
+        if "average salary" in norm or "avg salary" in norm:
+            return _wrap_sql("SELECT AVG(salary) AS average_salary\nFROM employees")
+        if "average mark" in norm or "avg mark" in norm or "average score" in norm:
+            return _wrap_sql("SELECT AVG(marks) AS average_marks\nFROM students")
+        if any(w in norm for w in ["total revenue", "total sales", "sum of sales"]):
+            if "customer" in norm:
+                return _wrap_sql("SELECT customer_id, SUM(total_amount) AS total_sales\nFROM orders\nGROUP BY customer_id")
+            return _wrap_sql("SELECT SUM(total_amount) AS total_revenue\nFROM orders")
+
+        # Joins
+        if ("employee" in norm and "department" in norm) and any(w in norm for w in ["join", "combine", "with", "and"]):
+            return _wrap_sql("SELECT e.id, e.first_name, e.last_name, d.department_name\nFROM employees e\nINNER JOIN departments d ON e.department_id = d.id")
+        if "student" in norm and "course" in norm:
+            return _wrap_sql("SELECT s.student_id, s.first_name, s.last_name, c.course_name\nFROM students s\nINNER JOIN enrollments e ON s.student_id = e.student_id\nINNER JOIN courses c ON e.course_id = c.course_id")
+        if "customer" in norm and "order" in norm:
+            return _wrap_sql("SELECT c.customer_id, c.name, o.order_id, o.order_date, o.total_amount\nFROM customers c\nINNER JOIN orders o ON c.customer_id = o.customer_id")
+
+        # Duplicates
+        if "duplicate email" in norm:
+            return _wrap_sql("SELECT email, COUNT(*) AS count\nFROM users\nGROUP BY email\nHAVING COUNT(*) > 1")
+        if "duplicate" in norm:
+            return _wrap_sql("SELECT id, COUNT(*) AS count\nFROM table_name\nGROUP BY id\nHAVING COUNT(*) > 1")
+
+        # Explicit Index creation
+        if any(w in norm for w in ["create index", "add index", "build index"]):
+            return _wrap_sql("CREATE INDEX idx_name ON table_name(column_name)")
+
+        # Dynamic fallback
+        entity = "records"
+        for w in norm.split():
+            if w.endswith("s") and len(w) > 3 and w not in ("this", "class", "status", "marks", "sales"):
+                entity = w
+                break
+
+        if any(w in norm for w in ["count", "total", "number", "how many"]):
+            return _wrap_sql(f"SELECT COUNT(*) AS total_{entity}\nFROM {entity}")
+
+        return _wrap_sql(f"SELECT *\nFROM {entity}")
 
     def _build_debugging_response(self, query: str) -> str:
         """Analyzes query text from a debugging & error-fixing perspective."""
