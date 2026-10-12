@@ -23,10 +23,373 @@ SQL_DOMAIN_KEYWORDS: Set[str] = {
     "integer", "boolean", "timestamp", "date", "entity", "relationship", "relational",
     "dcl", "ddl", "dml", "tcl", "explain", "analyze", "b-tree", "hash", "seek", "scan",
     "salary", "average", "calculate", "student", "students", "employee", "employees",
-    "department", "departments", "customer", "customers", "total", "highest", "second"
+    "department", "departments", "customer", "customers", "total", "highest", "second",
+    "distinct", "case", "when", "then", "else", "end", "like", "between", "in"
 }
 
-# Generic SQL topic knowledge generator for queries not explicitly in a standalone markdown file
+# Curated concise theoretical knowledge base specifically for 'explain_concept' mode.
+# Follows the standard structure:
+# 1. Topic name
+# 2. Simple theoretical explanation
+# 3. Purpose or importance (Why is it used?)
+# 4. Key takeaway
+# SQL examples are only provided when explicitly requested by the user.
+CONCISE_CONCEPT_KB: Dict[str, Dict[str, Any]] = {
+    "primary key": {
+        "title": "Primary Key",
+        "explanation": "A primary key is a column, or combination of columns, that uniquely identifies each row in a database table. It cannot contain duplicate or NULL values.",
+        "why": "It ensures that every record can be uniquely identified and helps maintain data integrity.",
+        "takeaway": "Every row must have a unique identifier.",
+        "example": "CREATE TABLE Users (\n    user_id INT PRIMARY KEY,\n    username VARCHAR(50) NOT NULL\n);"
+    },
+    "composite primary key": {
+        "title": "Composite Primary Key",
+        "explanation": "A composite primary key is a primary key composed of two or more columns that together guarantee unique identification for each row in a table.",
+        "why": "It is used in junction or associative tables representing many-to-many relationships where no single column is unique on its own.",
+        "takeaway": "Uniqueness is guaranteed only by combining all component columns together.",
+        "example": "CREATE TABLE Enrollments (\n    student_id INT,\n    course_id INT,\n    enrollment_date DATE,\n    PRIMARY KEY (student_id, course_id)\n);"
+    },
+    "foreign key": {
+        "title": "Foreign Key",
+        "explanation": "A foreign key is a column or set of columns in one table that references the primary key of another table, creating an explicit relational link between them.",
+        "why": "It enforces referential integrity, ensuring child records cannot reference non-existent parent records.",
+        "takeaway": "Foreign keys maintain relational integrity by preventing orphaned records.",
+        "example": "CREATE TABLE Orders (\n    order_id INT PRIMARY KEY,\n    user_id INT REFERENCES Users(user_id)\n);"
+    },
+    "inner join": {
+        "title": "INNER JOIN",
+        "explanation": "An INNER JOIN is an operation that combines rows from two or more tables based on a related column. It returns only the records where the join condition matches in both tables.",
+        "why": "It retrieves intersecting data between tables while filtering out unmatched or orphaned records.",
+        "takeaway": "Only rows with matching values in both tables appear in the result set; non-matching rows are excluded.",
+        "example": "SELECT Employees.name, Departments.dept_name\nFROM Employees\nINNER JOIN Departments ON Employees.dept_id = Departments.id;"
+    },
+    "left join": {
+        "title": "LEFT JOIN",
+        "explanation": "A LEFT JOIN (or LEFT OUTER JOIN) returns all records from the left table and the matching records from the right table. Where no match exists, NULL values appear for right table columns.",
+        "why": "It preserves all rows from the primary left table regardless of whether matching records exist in the related right table.",
+        "takeaway": "Every row from the left table is included; unmatched rows from the right table return NULL.",
+        "example": "SELECT Customers.name, Orders.order_id\nFROM Customers\nLEFT JOIN Orders ON Customers.id = Orders.customer_id;"
+    },
+    "right join": {
+        "title": "RIGHT JOIN",
+        "explanation": "A RIGHT JOIN (or RIGHT OUTER JOIN) returns all records from the right table and the matching records from the left table. If no match is found, NULL values are returned for left table columns.",
+        "why": "It ensures that every record in the right table is included in the output even when matching left records do not exist.",
+        "takeaway": "All rows from the right table are preserved; non-matching left values evaluate to NULL.",
+        "example": "SELECT Orders.order_id, Customers.name\nFROM Customers\nRIGHT JOIN Orders ON Customers.id = Orders.customer_id;"
+    },
+    "full join": {
+        "title": "FULL OUTER JOIN",
+        "explanation": "A FULL OUTER JOIN returns all records when there is a match in either the left or the right table. Rows without a match on either side return NULL for missing fields.",
+        "why": "It provides a comprehensive view across two tables, ensuring no records from either side are lost.",
+        "takeaway": "Combines LEFT and RIGHT joins into a single output, filling missing pairs with NULL.",
+        "example": "SELECT A.id, B.id\nFROM TableA A\nFULL OUTER JOIN TableB B ON A.id = B.id;"
+    },
+    "cross join": {
+        "title": "CROSS JOIN",
+        "explanation": "A CROSS JOIN produces the Cartesian product of two tables, pairing every individual row from the first table with every individual row from the second table without any matching condition.",
+        "why": "It is used when you need to calculate every possible combination of items between two datasets.",
+        "takeaway": "Total output rows equal the row count of table A multiplied by the row count of table B.",
+        "example": "SELECT Sizes.size_name, Colors.color_name\nFROM Sizes\nCROSS JOIN Colors;"
+    },
+    "self join": {
+        "title": "Self Join",
+        "explanation": "A Self Join is a join operation in which a single table is joined with itself using distinct table aliases.",
+        "why": "It models hierarchical parent-child relationships within the same table (such as employees and managers) or compares rows in the same dataset.",
+        "takeaway": "Always assign distinct table aliases to prevent ambiguous column reference errors.",
+        "example": "SELECT E.name AS Employee, M.name AS Manager\nFROM Employees E\nLEFT JOIN Employees M ON E.manager_id = M.id;"
+    },
+    "joins": {
+        "title": "SQL Joins",
+        "explanation": "A SQL JOIN combines columns from two or more tables into a single result set based on a common related column between them.",
+        "why": "Relational databases split data across tables to minimize redundancy; joins allow you to query related data together.",
+        "takeaway": "Choose INNER JOIN for exact matches, or OUTER JOIN (LEFT/RIGHT/FULL) when unmatched rows must be retained.",
+        "example": "SELECT Orders.id, Customers.name\nFROM Orders\nJOIN Customers ON Orders.customer_id = Customers.id;"
+    },
+    "normalization": {
+        "title": "Database Normalization",
+        "explanation": "Normalization is the systematic process of organizing relational database tables to minimize data redundancy and eliminate anomalies during data modification. It decomposes large tables into smaller, related tables using defined normal forms (1NF, 2NF, 3NF).",
+        "why": "It prevents update, insertion, and deletion anomalies while maintaining data consistency across relationships.",
+        "takeaway": "Store each fact in exactly one place to keep data consistent.",
+        "example": "-- Normalized schema links Customers to Orders via foreign key customer_id\nCREATE TABLE Orders (\n    order_id INT PRIMARY KEY,\n    customer_id INT REFERENCES Customers(id)\n);"
+    },
+    "1nf": {
+        "title": "First Normal Form (1NF)",
+        "explanation": "First Normal Form (1NF) requires that all column values in a relational table are atomic (indivisible) and that each record is uniquely identifiable with no repeating column groups.",
+        "why": "It ensures that values can be queried, filtered, and indexed predictably without parsing composite strings or delimited lists.",
+        "takeaway": "Every table cell must contain a single scalar value, never an array or list.",
+        "example": "-- Atomic values: Store each tag or phone number in its own row or dedicated table."
+    },
+    "2nf": {
+        "title": "Second Normal Form (2NF)",
+        "explanation": "Second Normal Form (2NF) requires that a table is in 1NF and that every non-key column is fully functionally dependent on the entire primary key, eliminating partial dependencies.",
+        "why": "It eliminates redundant column storage in tables that use composite primary keys, preventing update anomalies.",
+        "takeaway": "Non-key columns must depend on the whole primary key, not just a subset of a composite key.",
+        "example": "-- Move columns dependent on only part of a composite key to a separate table."
+    },
+    "3nf": {
+        "title": "Third Normal Form (3NF)",
+        "explanation": "Third Normal Form (3NF) requires that a table is in 2NF and that no non-key column depends on another non-key column, eliminating transitive dependencies.",
+        "why": "It prevents cascading updates by ensuring non-key attributes are stored only where their direct determinant is the primary key.",
+        "takeaway": "Every non-key column must depend directly on the primary key, and nothing but the primary key.",
+        "example": "-- Move ZipCode to City mappings into a separate PostalCodes table instead of repeating in Users."
+    },
+    "where vs having": {
+        "title": "WHERE vs. HAVING",
+        "explanation": "The WHERE clause filters individual rows before any groupings or aggregations are calculated. The HAVING clause filters summarized groups after the GROUP BY clause has been evaluated.",
+        "why": "Aggregate functions (such as COUNT, SUM, or AVG) cannot be evaluated in a WHERE clause, making HAVING necessary for filtering aggregated results.",
+        "takeaway": "Use WHERE to filter rows before grouping; use HAVING to filter groups after aggregation.",
+        "example": "SELECT dept_id, COUNT(*)\nFROM Employees\nWHERE status = 'ACTIVE'\nGROUP BY dept_id\nHAVING COUNT(*) > 5;"
+    },
+    "union vs union all": {
+        "title": "UNION vs. UNION ALL",
+        "explanation": "UNION and UNION ALL combine the result sets of two or more SELECT queries into a single dataset. UNION automatically removes duplicate rows, whereas UNION ALL retains all rows including duplicates.",
+        "why": "UNION ALL executes significantly faster because it skips the duplicate checking and sorting pass.",
+        "takeaway": "Use UNION when unique rows are required; use UNION ALL for higher performance when duplicates are acceptable.",
+        "example": "SELECT id FROM TableA\nUNION ALL\nSELECT id FROM TableB;"
+    },
+    "cte": {
+        "title": "Common Table Expressions (CTE)",
+        "explanation": "A Common Table Expression (CTE) is a named, temporary result set defined using the WITH clause that exists only within the execution scope of a single query.",
+        "why": "It simplifies complex queries by breaking nested subqueries into readable, modular steps and allows recursive querying for hierarchies.",
+        "takeaway": "Use CTEs to make complex multi-step queries clean, readable, and maintainable.",
+        "example": "WITH ActiveUsers AS (\n    SELECT id, name FROM Users WHERE status = 'ACTIVE'\n)\nSELECT * FROM ActiveUsers;"
+    },
+    "window functions": {
+        "title": "Window Functions",
+        "explanation": "A window function performs calculations across a set of table rows related to the current row without collapsing the rows into a single summary output.",
+        "why": "Unlike GROUP BY, window functions retain individual row identities while computing running totals, rankings, and moving averages.",
+        "takeaway": "Use OVER() and PARTITION BY to compute analytics without losing row-level detail.",
+        "example": "SELECT name, salary,\n    RANK() OVER(PARTITION BY dept_id ORDER BY salary DESC) AS rank\nFROM Employees;"
+    },
+    "subqueries": {
+        "title": "Subqueries",
+        "explanation": "A subquery is a SQL query nested inside a larger outer query (such as within SELECT, FROM, or WHERE clauses).",
+        "why": "It allows you to use dynamic query results directly as filtering conditions or derived tables for the outer query.",
+        "takeaway": "Subqueries can be standalone or correlated (referencing outer query columns row-by-row).",
+        "example": "SELECT name FROM Employees\nWHERE salary > (SELECT AVG(salary) FROM Employees);"
+    },
+    "indexes": {
+        "title": "Indexes",
+        "explanation": "An index is a database data structure (most commonly a B-Tree) that speeds up data retrieval operations on a table at the cost of additional storage and slower writes.",
+        "why": "It avoids slow full table scans by allowing the database engine to locate records quickly using index seeks.",
+        "takeaway": "Index frequently filtered and joined columns, but balance against write overhead.",
+        "example": "CREATE INDEX idx_user_email ON Users(email);"
+    },
+    "views": {
+        "title": "Views",
+        "explanation": "A view is a virtual table defined by a stored SELECT query. It does not store physical data itself but displays data dynamically from its underlying base tables.",
+        "why": "It simplifies complex queries for consumers, enhances security by restricting column access, and encapsulates business logic.",
+        "takeaway": "Views act like virtual tables that reflect underlying data changes in real time.",
+        "example": "CREATE VIEW ActiveEmployees AS\nSELECT id, name FROM Employees WHERE status = 'ACTIVE';"
+    },
+    "transactions": {
+        "title": "Database Transactions & ACID",
+        "explanation": "A transaction is a logical unit of database operations that must execute completely or not at all, adhering to ACID properties (Atomicity, Consistency, Isolation, Durability).",
+        "why": "It prevents partial updates and data corruption during system failures or concurrent access.",
+        "takeaway": "Use COMMIT to finalize changes and ROLLBACK to revert changes if an error occurs.",
+        "example": "BEGIN TRANSACTION;\nUPDATE Accounts SET balance = balance - 100 WHERE id = 1;\nUPDATE Accounts SET balance = balance + 100 WHERE id = 2;\nCOMMIT;"
+    },
+    "acid": {
+        "title": "ACID Properties",
+        "explanation": "ACID represents the four core guarantees of reliable database transactions: Atomicity (all or nothing), Consistency (preserves rules), Isolation (independent concurrent execution), and Durability (committed changes persist).",
+        "why": "It ensures that database operations remain trustworthy and consistent even during crashes, errors, or concurrent access.",
+        "takeaway": "ACID guarantees that transactional updates never leave data in a partially modified state.",
+        "example": "-- Enforced automatically by database transaction engines using write-ahead logs and locks."
+    },
+    "groupby": {
+        "title": "GROUP BY Clause",
+        "explanation": "The GROUP BY clause groups rows that share identical values in specified columns into summary rows, typically used with aggregate functions.",
+        "why": "It allows you to summarize data by category, calculating metrics like totals or averages for each group.",
+        "takeaway": "Every non-aggregated column in the SELECT list must appear in the GROUP BY clause.",
+        "example": "SELECT dept_id, COUNT(*), AVG(salary)\nFROM Employees\nGROUP BY dept_id;"
+    },
+    "having": {
+        "title": "HAVING Clause",
+        "explanation": "The HAVING clause filters summarized groups created by a GROUP BY clause based on specified conditions.",
+        "why": "Because the WHERE clause cannot evaluate aggregate functions, HAVING is needed to filter aggregated groups.",
+        "takeaway": "HAVING filters groups after aggregation, whereas WHERE filters individual rows before grouping.",
+        "example": "SELECT dept_id, COUNT(*)\nFROM Employees\nGROUP BY dept_id\nHAVING COUNT(*) > 10;"
+    },
+    "orderby": {
+        "title": "ORDER BY Clause",
+        "explanation": "The ORDER BY clause sorts query results in ascending (ASC) or descending (DESC) order based on one or more specified columns.",
+        "why": "Relational tables have no inherent order; ORDER BY guarantees a deterministic presentation sequence for query results.",
+        "takeaway": "Ascending order is the default unless DESC is explicitly specified.",
+        "example": "SELECT name, salary FROM Employees ORDER BY salary DESC;"
+    },
+    "where": {
+        "title": "WHERE Clause",
+        "explanation": "The WHERE clause filters rows returned by a query based on specified conditional criteria or predicates.",
+        "why": "It limits the dataset to only relevant rows, reducing processing overhead and returning specific information.",
+        "takeaway": "Only rows where the WHERE condition evaluates to TRUE are included.",
+        "example": "SELECT * FROM Employees WHERE department = 'Sales' AND salary > 50000;"
+    },
+    "select": {
+        "title": "SELECT Statement",
+        "explanation": "The SELECT statement retrieves data from one or more tables in a relational database.",
+        "why": "It defines the exact columns and expressions to project in the final query result set.",
+        "takeaway": "Specify only needed columns instead of SELECT * to improve performance.",
+        "example": "SELECT first_name, last_name FROM Employees;"
+    },
+    "insert": {
+        "title": "INSERT Statement",
+        "explanation": "The INSERT statement adds one or more new records into a specified database table.",
+        "why": "It populates tables with initial data and records new entries over time.",
+        "takeaway": "Values must match the target table's column order, data types, and constraints.",
+        "example": "INSERT INTO Employees (id, name) VALUES (1, 'Alice');"
+    },
+    "update": {
+        "title": "UPDATE Statement",
+        "explanation": "The UPDATE statement modifies existing data values in one or more columns of a database table.",
+        "why": "It keeps database records accurate as real-world information changes.",
+        "takeaway": "Always include a WHERE clause to avoid accidentally modifying all rows in the table.",
+        "example": "UPDATE Employees SET salary = 60000 WHERE id = 1;"
+    },
+    "delete": {
+        "title": "DELETE Statement",
+        "explanation": "The DELETE statement removes specific existing rows from a table based on a condition.",
+        "why": "It purges obsolete or invalid records while maintaining table structure and schema definitions.",
+        "takeaway": "Always use a WHERE clause unless you explicitly intend to remove every row in the table.",
+        "example": "DELETE FROM Employees WHERE status = 'INACTIVE';"
+    },
+    "truncate": {
+        "title": "TRUNCATE Statement",
+        "explanation": "The TRUNCATE statement quickly removes all rows from a table by deallocating its data pages, preserving table structure and resetting identity counters.",
+        "why": "It is much faster than DELETE for wiping a full table because it logs minimal page deallocations rather than individual row deletes.",
+        "takeaway": "TRUNCATE is a DDL operation that cannot filter with WHERE and resets auto-increment IDs.",
+        "example": "TRUNCATE TABLE Logs;"
+    },
+    "drop": {
+        "title": "DROP Statement",
+        "explanation": "The DROP statement permanently deletes an entire database object (such as a table, view, or database) including its structure, data, and associated indexes.",
+        "why": "It reclaims storage by completely removing obsolete database objects.",
+        "takeaway": "DROP permanently destroys the table schema and data; it cannot be undone without a backup.",
+        "example": "DROP TABLE OldArchivedData;"
+    },
+    "create table": {
+        "title": "CREATE TABLE",
+        "explanation": "The CREATE TABLE statement defines a new table structure, specifying column names, data types, and integrity constraints.",
+        "why": "It establishes the relational schema where database records will be stored.",
+        "takeaway": "Plan primary keys, data types, and constraints carefully before creating tables.",
+        "example": "CREATE TABLE Departments (\n    id INT PRIMARY KEY,\n    dept_name VARCHAR(50) NOT NULL\n);"
+    },
+    "alter table": {
+        "title": "ALTER TABLE",
+        "explanation": "The ALTER TABLE statement modifies an existing table structure by adding, dropping, or modifying columns and constraints.",
+        "why": "It enables database schemas to evolve over time without having to drop and recreate existing tables.",
+        "takeaway": "Use ALTER TABLE to update schema definitions while preserving existing table data.",
+        "example": "ALTER TABLE Employees ADD COLUMN email VARCHAR(100);"
+    },
+    "triggers": {
+        "title": "Triggers",
+        "explanation": "A trigger is a stored procedure that automatically executes in response to specified database events (such as INSERT, UPDATE, or DELETE) on a table.",
+        "why": "It enforces complex business validation rules, audits data changes, and automatically maintains derived data.",
+        "takeaway": "Triggers run automatically behind the scenes; use sparingly to avoid hidden performance bottlenecks.",
+        "example": "CREATE TRIGGER update_timestamp\nAFTER UPDATE ON Users\nFOR EACH ROW EXECUTE PROCEDURE set_updated_at();"
+    },
+    "stored procedures": {
+        "title": "Stored Procedures",
+        "explanation": "A stored procedure is a prepared batch of SQL statements saved in the database catalog that can be executed repeatedly with input and output parameters.",
+        "why": "It encapsulates business logic, reduces network round-trips, and improves execution plan caching.",
+        "takeaway": "Stored procedures centralize reusable database logic on the database server.",
+        "example": "CREATE PROCEDURE GetActiveUsers()\nLANGUAGE SQL\nAS $$\n    SELECT * FROM Users WHERE status = 'ACTIVE';\n$$;"
+    },
+    "constraints": {
+        "title": "Database Constraints",
+        "explanation": "Constraints are rules enforced on data columns to ensure data accuracy, reliability, and domain integrity.",
+        "why": "They prevent invalid or incompatible data from ever being written to database tables.",
+        "takeaway": "Common constraints include PRIMARY KEY, FOREIGN KEY, UNIQUE, NOT NULL, and CHECK.",
+        "example": "CREATE TABLE Items (\n    id INT PRIMARY KEY,\n    price DECIMAL(10, 2) CHECK (price > 0)\n);"
+    },
+    "aggregate": {
+        "title": "Aggregate Functions",
+        "explanation": "Aggregate functions perform a calculation across multiple row values and return a single summary value.",
+        "why": "They provide immediate statistical summaries (such as COUNT, SUM, AVG, MIN, and MAX) across datasets.",
+        "takeaway": "Aggregate functions ignore NULL values (except COUNT(*)) and are often combined with GROUP BY.",
+        "example": "SELECT COUNT(*), AVG(salary), MAX(salary) FROM Employees;"
+    },
+    "distinct": {
+        "title": "DISTINCT Keyword",
+        "explanation": "The DISTINCT keyword removes duplicate rows from the query result set, returning only unique value combinations.",
+        "why": "It filters redundant rows when a query would otherwise produce duplicate records.",
+        "takeaway": "DISTINCT evaluates uniqueness across all columns specified in the SELECT clause.",
+        "example": "SELECT DISTINCT department FROM Employees;"
+    },
+    "case when": {
+        "title": "CASE Expression",
+        "explanation": "The CASE expression provides conditional if-then-else logic directly inside SQL queries.",
+        "why": "It allows dynamic value transformation and categorical grouping within SELECT, WHERE, and ORDER BY clauses.",
+        "takeaway": "Always include an ELSE branch to handle unmatched cases predictably.",
+        "example": "SELECT name,\n    CASE WHEN salary > 80000 THEN 'Senior' ELSE 'Junior' END AS tier\nFROM Employees;"
+    }
+}
+
+# Sorted by alias phrase length (descending) to guarantee longest-match-first priority
+CONCEPT_ALIAS_MAP: List[Tuple[str, str]] = sorted([
+    ("difference between union and union all", "union vs union all"),
+    ("difference between where and having", "where vs having"),
+    ("difference between having and where", "where vs having"),
+    ("common table expressions", "cte"),
+    ("common table expression", "cte"),
+    ("composite primary key", "composite primary key"),
+    ("full outer join", "full join"),
+    ("left outer join", "left join"),
+    ("right outer join", "right join"),
+    ("first normal form", "1nf"),
+    ("second normal form", "2nf"),
+    ("third normal form", "3nf"),
+    ("union vs union all", "union vs union all"),
+    ("where vs having", "where vs having"),
+    ("aggregate functions", "aggregate"),
+    ("aggregate function", "aggregate"),
+    ("window functions", "window functions"),
+    ("window function", "window functions"),
+    ("stored procedures", "stored procedures"),
+    ("stored procedure", "stored procedures"),
+    ("create table", "create table"),
+    ("alter table", "alter table"),
+    ("primary key", "primary key"),
+    ("foreign key", "foreign key"),
+    ("inner join", "inner join"),
+    ("left join", "left join"),
+    ("right join", "right join"),
+    ("cross join", "cross join"),
+    ("self join", "self join"),
+    ("normalization", "normalization"),
+    ("transactions", "transactions"),
+    ("transaction", "transactions"),
+    ("subqueries", "subqueries"),
+    ("subquery", "subqueries"),
+    ("order by", "orderby"),
+    ("group by", "groupby"),
+    ("case when", "case when"),
+    ("distinct", "distinct"),
+    ("triggers", "triggers"),
+    ("trigger", "triggers"),
+    ("indexes", "indexes"),
+    ("indexing", "indexes"),
+    ("index", "indexes"),
+    ("truncate", "truncate"),
+    ("delete", "delete"),
+    ("update", "update"),
+    ("insert", "insert"),
+    ("select", "select"),
+    ("having", "having"),
+    ("where", "where"),
+    ("views", "views"),
+    ("view", "views"),
+    ("joins", "joins"),
+    ("join", "joins"),
+    ("drop", "drop"),
+    ("acid", "acid"),
+    ("1nf", "1nf"),
+    ("2nf", "2nf"),
+    ("3nf", "3nf"),
+    ("cte", "cte")
+], key=lambda x: len(x[0]), reverse=True)
+
+
+# General SQL explanations preserved for Smart Assistant mode fallback
 GENERAL_SQL_EXPLANATIONS: Dict[str, Dict[str, str]] = {
     "self join": {
         "title": "Self Join in SQL",
@@ -76,15 +439,32 @@ class SQLTopicDoc:
         self.filename = filename
         self.filepath = filepath
         self.raw_content = ""
+        self.raw_content_lower = ""
+        self.content_words: Set[str] = set()
         self.title = filename.replace(".md", "").capitalize()
         self.sections: Dict[str, str] = {}
+        self.clean_syntax = ""
+        self.clean_example = ""
+        self.clean_explanation = ""
         self._load()
+
+    def _strip_fences(self, text: str) -> str:
+        """Removes outer markdown code fences to prevent duplicate nested fences."""
+        s = text.strip()
+        if s.startswith("```"):
+            lines = s.splitlines()
+            if len(lines) >= 2 and lines[-1].strip() == "```":
+                return "\n".join(lines[1:-1]).strip()
+        return s
 
     def _load(self):
         try:
             with open(self.filepath, "r", encoding="utf-8") as f:
                 self.raw_content = f.read().strip()
                 
+            self.raw_content_lower = self.raw_content.lower()
+            self.content_words = set(re.findall(r"\b[a-zA-Z0-9_\-]{4,}\b", self.raw_content_lower))
+
             # Extract main title from first markdown H1
             h1_match = re.search(r"^#\s+(.+)$", self.raw_content, re.MULTILINE)
             if h1_match:
@@ -104,6 +484,14 @@ class SQLTopicDoc:
                     current_body.append(line)
             if current_body:
                 self.sections[current_header] = "\n".join(current_body).strip()
+
+            # Pre-compute clean representations
+            if "🔍 Syntax" in self.sections:
+                self.clean_syntax = self._strip_fences(self.sections["🔍 Syntax"])
+            if "💻 Examples" in self.sections:
+                self.clean_example = self._strip_fences(self.sections["💻 Examples"])
+            if "💡 Concept Explanation" in self.sections:
+                self.clean_explanation = self.sections["💡 Concept Explanation"].strip()
                 
         except Exception as e:
             logger.error(f"Failed to load knowledge file {self.filepath}: {e}")
@@ -117,11 +505,17 @@ class SQLKnowledgeEngine:
         self.knowledge_dir = knowledge_dir
         self.docs: Dict[str, SQLTopicDoc] = {}
         self.supported_topic_names: List[str] = []
+        self._cache: Dict[Tuple[str, str], Tuple[str, Optional[str]]] = {}
+        self._loaded: bool = False
         self.reload()
 
-    def reload(self):
+    def reload(self, force: bool = False):
         """Loads and indexes all markdown files in the knowledge base directory."""
+        if self._loaded and not force:
+            return
+
         self.docs = {}
+        self._cache = {}
         if not os.path.exists(self.knowledge_dir):
             logger.error(f"Knowledge directory does not exist at: {self.knowledge_dir}")
             return
@@ -133,6 +527,7 @@ class SQLKnowledgeEngine:
                 self.docs[fname] = doc
 
         self.supported_topic_names = sorted([doc.title for doc in self.docs.values()])
+        self._loaded = True
         logger.info(f"Loaded {len(self.docs)} SQL knowledge documents successfully from {self.knowledge_dir}.")
 
     def _normalize_text(self, text: str) -> str:
@@ -156,10 +551,36 @@ class SQLKnowledgeEngine:
 
         return False
 
+    def user_wants_example(self, query: str) -> bool:
+        """
+        Determines whether the user explicitly requested SQL syntax, code, or practical examples.
+        In Explain Concept mode, code is omitted by default unless this evaluates to True.
+        """
+        q = query.lower()
+        patterns = [
+            r"\bwith\s+(?:an?\s+)?(?:sql\s+)?example\b",
+            r"\bwith\s+(?:an?\s+)?(?:sql\s+)?query\b",
+            r"\bwith\s+(?:an?\s+)?(?:sql\s+)?code\b",
+            r"\bwith\s+syntax\b",
+            r"\bgive\s+(?:me\s+)?(?:an?\s+)?example\b",
+            r"\bshow\s+(?:me\s+)?(?:an?\s+)?example\b",
+            r"\bprovide\s+(?:an?\s+)?(?:sql\s+)?example\b",
+            r"\binclude\s+(?:an?\s+)?(?:sql\s+)?example\b",
+            r"\bexample\s+please\b",
+            r"\bsyntax\s+please\b",
+            r"\bshow\s+code\b",
+            r"\bcode\s+example\b",
+            r"\bsql\s+example\b",
+            r"\bhow\s+to\s+write\b",
+            r"\bwrite\s+an?\s+example\b",
+            r"\bwrite\s+a\s+query\b"
+        ]
+        return any(re.search(p, q) for p in patterns)
+
     def detect_topics(self, query: str) -> List[Tuple[str, float]]:
         """
         Scans query for topic matches against catalog and knowledge base.
-        Returns a sorted list of (filename, score) tuples.
+        Optimized with set-intersection operations to avoid redundant scans.
         """
         normalized_query = self._normalize_text(query)
         words = set(normalized_query.split())
@@ -189,10 +610,9 @@ class SQLKnowledgeEngine:
             if doc.title.lower() in normalized_query:
                 score += 40.0
 
-            # 4. Content overlap boost
-            content_lower = doc.raw_content.lower()
-            overlap = sum(1 for w in words if len(w) > 3 and w in content_lower)
-            score += min(overlap * 2.0, 20.0)
+            # 4. Content word intersection boost
+            intersection_count = len(words & doc.content_words)
+            score += min(intersection_count * 2.5, 20.0)
 
             # 5. Natural intent boosts
             if "combine" in normalized_query and "table" in normalized_query and filename == "joins.md":
@@ -215,10 +635,9 @@ class SQLKnowledgeEngine:
     def query(self, user_message: str, mode: Optional[str] = "smart_assistant") -> Tuple[str, Optional[str]]:
         """
         Main query resolution pipeline:
-        1. Non-SQL guardrail check.
-        2. Mode-specific handler (explain_concept, optimize_query, debug_error).
-        3. Multi-topic or single-topic local knowledge match.
-        4. General SQL knowledge generator for uncataloged SQL topics.
+        1. In-memory cache lookup.
+        2. Non-SQL guardrail check.
+        3. Connector mode routing (explain_concept, optimize_query, debug_error, smart_assistant).
         """
         clean_msg = user_message.strip()
         if not clean_msg:
@@ -227,122 +646,196 @@ class SQLKnowledgeEngine:
         normalized = self._normalize_text(clean_msg)
         req_mode = (mode or "smart_assistant").lower().strip()
 
+        # Cache check
+        cache_key = (normalized, req_mode)
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
         # 1. Non-SQL Check
         if not self.is_sql_related(clean_msg):
             logger.info(f"Non-SQL query detected: '{clean_msg}'. Returning domain guardrail.")
-            return (
+            resp = (
                 "I am **SQLSense AI**, your dedicated SQL and database learning assistant. "
                 "I can only help with SQL queries, database design, query optimization, debugging, and relational database interview prep.\n\n"
                 "**Try asking me about:**\n"
-                "• *\"What is a JOIN and how do I combine two tables?\"*\n"
+                "• *\"What is a primary key?\"*\n"
+                "• *\"What is an INNER JOIN?\"*\n"
+                "• *\"Explain normalization.\"*\n"
                 "• *\"What is the difference between WHERE and HAVING?\"*\n"
-                "• *\"How do Window Functions work (ROW_NUMBER vs RANK)?\"*\n"
-                "• *\"Explain Common Table Expressions (CTE)\"*\n"
-                "• *\"How to find the second highest salary?\"*",
+                "• *\"How do Window Functions work (ROW_NUMBER vs RANK)?\"*",
                 None
             )
+            self._cache[cache_key] = resp
+            return resp
 
         # 2. Connector Mode: Optimize Query
         if req_mode == "optimize_query":
             logger.info(f"Executing in OPTIMIZE_QUERY mode for: '{clean_msg[:50]}...'")
-            return self._build_optimization_response(clean_msg), None
+            resp = (self._build_optimization_response(clean_msg), None)
+            self._cache[cache_key] = resp
+            return resp
 
         # 3. Connector Mode: Debug Error
         if req_mode == "debug_error":
             logger.info(f"Executing in DEBUG_ERROR mode for: '{clean_msg[:50]}...'")
-            return self._build_debugging_response(clean_msg), None
+            resp = (self._build_debugging_response(clean_msg), None)
+            self._cache[cache_key] = resp
+            return resp
 
-        # 4. Check General SQL knowledge dictionary first for specific concepts
+        # 4. Connector Mode: Explain Concept (Dedicated concise theoretical path)
+        if req_mode == "explain_concept":
+            logger.info(f"Executing in EXPLAIN_CONCEPT mode for: '{clean_msg[:50]}...'")
+            resp = self._resolve_explain_concept(clean_msg, normalized)
+            self._cache[cache_key] = resp
+            return resp
+
+        # 5. Smart Assistant Mode (Normal comprehensive answer behavior)
+        logger.info(f"Executing in SMART_ASSISTANT mode for: '{clean_msg[:50]}...'")
+        resp = self._resolve_smart_assistant(clean_msg, normalized)
+        self._cache[cache_key] = resp
+        return resp
+
+    def _resolve_explain_concept(self, query: str, normalized: str) -> Tuple[str, Optional[str]]:
+        """
+        Generates a short, theory-focused explanation strictly adhering to:
+        1. **Topic name**
+        2. Simple theoretical explanation
+        3. **Why is it used?** (purpose/importance)
+        4. **Key takeaway**
+        Length: 50-120 words (or 30-60 words for simple topics).
+        SQL examples appear ONLY if explicitly requested.
+        """
+        wants_example = self.user_wants_example(query)
+
+        # 1. Match against curated concept repository using longest-alias priority
+        for alias, concept_key in CONCEPT_ALIAS_MAP:
+            if alias in normalized:
+                data = CONCISE_CONCEPT_KB.get(concept_key)
+                if data:
+                    reply = self._render_concept_response(
+                        topic_title=data["title"],
+                        explanation=data["explanation"],
+                        why=data["why"],
+                        takeaway=data["takeaway"],
+                        example=data.get("example"),
+                        include_example=wants_example
+                    )
+                    source_file = f"{concept_key.replace(' ', '')}.md" if f"{concept_key.replace(' ', '')}.md" in self.docs else None
+                    return reply, source_file
+
+        # 2. Match against local knowledge base documents
+        matches = self.detect_topics(query)
+        if matches:
+            top_file, _ = matches[0]
+            doc = self.docs.get(top_file)
+            if doc:
+                # Extract clean theoretical explanation from doc
+                explanation = doc.clean_explanation or doc.sections.get("Overview") or doc.raw_content
+                # Strip long markdown tables or lists from explanation if present
+                lines = [l.strip() for l in explanation.splitlines() if l.strip() and not l.strip().startswith("|")]
+                clean_exp = " ".join(lines[:3]) if lines else f"{doc.title} is a core relational database concept."
+
+                # Extract purpose / why it is used
+                why_text = f"It provides structured query capabilities and maintains data integrity across relational tables."
+                if "⚡ Best Practices" in doc.sections:
+                    bp_first = doc.sections["⚡ Best Practices"].splitlines()[0].strip().lstrip("•*- ")
+                    if bp_first and len(bp_first) < 160:
+                        why_text = bp_first
+
+                # Extract takeaway
+                takeaway_text = f"Understand its role in relational database design and query structure."
+                if "🎯 Interview Questions" in doc.sections:
+                    iq_lines = doc.sections["🎯 Interview Questions"].splitlines()
+                    for line in iq_lines:
+                        if line.startswith("* **Answer**:") or line.startswith("**Answer**:"):
+                            takeaway_text = line.split(":", 1)[1].strip()
+                            break
+
+                example_code = doc.clean_example or doc.clean_syntax
+                reply = self._render_concept_response(
+                    topic_title=doc.title,
+                    explanation=clean_exp,
+                    why=why_text,
+                    takeaway=takeaway_text,
+                    example=example_code,
+                    include_example=wants_example
+                )
+                return reply, top_file
+
+        # 3. Fallback for uncataloged SQL concepts
+        clean_title = query.replace("explain", "").replace("what is a", "").replace("what is an", "").replace("what is", "").replace("?", "").strip().title()
+        if not clean_title:
+            clean_title = "SQL Concept"
+
+        reply = self._render_concept_response(
+            topic_title=clean_title,
+            explanation=f"In relational databases, {clean_title} is a structural pattern used to query, manage, or optimize relational data.",
+            why="It ensures predictable query planner execution, data integrity, and consistent relational behavior.",
+            takeaway="Focus on the underlying relational mechanics and filter requirements.",
+            example=None,
+            include_example=wants_example
+        )
+        return reply, None
+
+    def _render_concept_response(
+        self,
+        topic_title: str,
+        explanation: str,
+        why: str,
+        takeaway: str,
+        example: Optional[str] = None,
+        include_example: bool = False
+    ) -> str:
+        """Assembles the final concise response strictly matching the required 4-part structure."""
+        parts = [
+            f"**{topic_title}**\n",
+            f"{explanation}\n",
+            f"**Why is it used?**\n",
+            f"{why}\n"
+        ]
+
+        if include_example and example and example.strip():
+            clean_ex = example.strip()
+            if not clean_ex.startswith("```"):
+                clean_ex = f"```sql\n{clean_ex}\n```"
+            parts.append(f"**Example:**\n{clean_ex}\n")
+
+        parts.append(f"**Key takeaway:** {takeaway}")
+        return "\n".join(parts)
+
+    def _resolve_smart_assistant(self, query: str, normalized: str) -> Tuple[str, Optional[str]]:
+        """Handles general SQL question answering with comprehensive educational material."""
+        # Check General SQL knowledge dictionary first
         for general_key, data in GENERAL_SQL_EXPLANATIONS.items():
             if general_key in normalized:
-                logger.info(f"Matched general SQL topic '{general_key}'.")
-                if req_mode == "explain_concept":
-                    reply = (
-                        f"# 💡 Concept Explanation: {data['title']}\n\n"
-                        f"### 📖 Definition & Overview\n{data['explanation']}\n\n"
-                        f"### 🎯 Why & When to Use It\n"
-                        f"Use `{data['title']}` when you need to structure relational data efficiently, prevent logic ambiguities, and retrieve accurate datasets.\n\n"
-                        f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
-                        f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
-                        f"### 📊 Expected Output\n{data['output']}\n\n"
-                        f"### 🔑 Key Takeaway\n{data['tip']}"
-                    )
-                else:
-                    reply = (
-                        f"# {data['title']}\n\n"
-                        f"### 💡 Concept Explanation\n{data['explanation']}\n\n"
-                        f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
-                        f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
-                        f"### 📊 Expected Output\n{data['output']}\n\n"
-                        f"### ⚡ Best Practice\n{data['tip']}"
-                    )
+                reply = (
+                    f"# {data['title']}\n\n"
+                    f"### 💡 Concept Explanation\n{data['explanation']}\n\n"
+                    f"### 🔍 Syntax\n```sql\n{data['syntax']}\n```\n\n"
+                    f"### 💻 Practical Example\n```sql\n{data['example']}\n```\n\n"
+                    f"### 📊 Expected Output\n{data['output']}\n\n"
+                    f"### ⚡ Best Practice\n{data['tip']}"
+                )
                 return reply, None
 
-        # 5. Match against local knowledge base
-        matches = self.detect_topics(clean_msg)
-
+        # Match against local knowledge base
+        matches = self.detect_topics(query)
         if matches:
             top_file, top_score = matches[0]
 
-            # Check if this is a Multi-Topic query
+            # Check for Multi-Topic query
             high_matches = [m for m in matches if m[1] >= 40.0]
             if len(high_matches) >= 2 and any(term in normalized for term in ("and", "with", "vs", "difference")):
                 multi_files = [m[0] for m in high_matches[:3]]
-                logger.info(f"Multi-topic query matched {len(multi_files)} files: {multi_files}")
-                combined_reply = self._build_multi_topic_response(multi_files, clean_msg)
+                combined_reply = self._build_multi_topic_response(multi_files, query)
                 return combined_reply, ", ".join(multi_files)
 
-            # Single topic match
             doc = self.docs.get(top_file)
             if doc:
-                logger.info(f"Single topic matched '{top_file}' with score {top_score:.1f}")
-                if req_mode == "explain_concept":
-                    return self._format_as_concept_explanation(doc), top_file
                 return doc.get_formatted_response(), top_file
 
-        # 6. Fallback response
-        logger.info(f"Unknown SQL concept query: '{clean_msg}'. Generating structured response.")
-        if req_mode == "explain_concept":
-            return self._build_general_concept_response(clean_msg), None
-        return self._build_general_sql_fallback(clean_msg), None
-
-    def _format_as_concept_explanation(self, doc: SQLTopicDoc) -> str:
-        """Adapts a topic doc specifically for the Explain Concept mode."""
-        explanation = doc.sections.get("💡 Concept Explanation") or doc.sections.get("Overview") or doc.raw_content
-        syntax = doc.sections.get("🔍 Syntax", "-- Standard SQL syntax applies")
-        example = doc.sections.get("💻 Examples", "-- See documentation for details")
-        tip = doc.sections.get("⚡ Best Practices") or doc.sections.get("🎯 Interview Focus", "Practice writing clean, standard ANSI SQL queries.")
-
-        return (
-            f"# Concept Guide: {doc.title}\n\n"
-            f"### 💡 Definition & Overview\n{explanation}\n\n"
-            f"### 🔍 Syntax Structure\n```sql\n{syntax}\n```\n\n"
-            f"### 💻 Practical SQL Example\n```sql\n{example}\n```\n\n"
-            f"### 🔑 Key Takeaway\n{tip}\n\n"
-            f"### 📄 Sources\n- `{doc.filename}`"
-        )
-
-    def _build_general_concept_response(self, query: str) -> str:
-        """Builds a structured educational breakdown for any concept."""
-        return (
-            f"# Concept Guide: {query}\n\n"
-            f"### 💡 Definition & Overview\n"
-            f"In relational databases, **{query}** is a core structural pattern used to query, filter, or manage relational data.\n\n"
-            f"### 🎯 Why & When to Use It\n"
-            f"• Ensures relational integrity and predictable query behavior.\n"
-            f"• Enables efficient query planner execution on database engines.\n"
-            f"• Eliminates redundant data scanning across large table partitions.\n\n"
-            f"### 🔍 Standard Query Pattern\n"
-            f"```sql\n"
-            f"-- Example pattern for {query}\n"
-            f"SELECT column1, column2, COUNT(*)\n"
-            f"FROM table_name\n"
-            f"WHERE status = 'ACTIVE'\n"
-            f"GROUP BY column1, column2;\n"
-            f"```\n\n"
-            f"### 🔑 Key Takeaway\n"
-            f"Always start by defining clear filtering conditions and specifying only the exact columns needed."
-        )
+        # Fallback response for uncataloged queries
+        return self._build_general_sql_fallback(query), None
 
     def _build_optimization_response(self, query: str) -> str:
         """Analyzes query text from an optimization perspective."""

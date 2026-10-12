@@ -42,7 +42,7 @@ export default function App() {
     return 'dark';
   });
 
-  const streamIntervalRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   // Sync theme to document element class & LocalStorage
   useEffect(() => {
@@ -69,11 +69,11 @@ export default function App() {
     }
   }, []);
 
-  // Cleanup active stream on unmount
+  // Cleanup active request on unmount
   useEffect(() => {
     return () => {
-      if (streamIntervalRef.current) {
-        clearInterval(streamIntervalRef.current);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
@@ -121,13 +121,12 @@ export default function App() {
   const isGenerating = isLoading || isStreaming;
 
   const handleStopGeneration = () => {
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     setIsStreaming(false);
     setIsLoading(false);
-    setMessages(prev => prev.map(msg => ({ ...msg, isStreaming: false })));
   };
 
   const handleSendMessage = async (textToSend, modeToSend) => {
@@ -141,10 +140,10 @@ export default function App() {
       setSidebarOpen(false);
     }
 
-    // Cancel any previous active streaming interval
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
+    // Cancel any previous in-flight request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
 
     // Update recent queries in state & LocalStorage
@@ -152,7 +151,7 @@ export default function App() {
     setRecentQuestions(updatedRecents);
     localStorage.setItem('sqlsense_recent_queries', JSON.stringify(updatedRecents));
 
-    // Append user message
+    // Append user message immediately
     const userMsgId = 'user-' + Date.now();
     const userMessage = { 
       id: userMsgId, 
@@ -166,6 +165,9 @@ export default function App() {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const response = await fetch(`${API_URL}/chat`, {
         method: 'POST',
@@ -176,6 +178,7 @@ export default function App() {
           message: query,
           mode: requestMode 
         }),
+        signal: controller.signal
       });
 
       if (!response.ok) {
@@ -185,86 +188,51 @@ export default function App() {
       const data = await response.json();
       const fullReply = data.reply || "No response generated.";
 
-      setIsLoading(false);
-      setIsStreaming(true);
-
       const assistantMsgId = 'assistant-' + Date.now();
 
+      // Render completed answer promptly without artificial animation delays
       setMessages((prev) => [
         ...prev,
         { 
           id: assistantMsgId, 
           role: 'assistant', 
-          content: '', 
-          mode: requestMode,
-          isStreaming: true, 
+          content: fullReply, 
+          mode: data.mode || requestMode,
+          contextUsed: data.context_used,
           timestamp: new Date() 
         },
       ]);
 
-      // Optimized progressive typing reveal (batched for high responsiveness)
-      const len = fullReply.length;
-      const chunkSize = len > 1200 ? 32 : len > 600 ? 20 : len > 200 ? 12 : 8;
-      const tickInterval = 24;
-      let currentIndex = 0;
-
-      await new Promise((resolve) => {
-        streamIntervalRef.current = setInterval(() => {
-          currentIndex += chunkSize;
-
-          if (currentIndex >= fullReply.length) {
-            currentIndex = fullReply.length;
-            clearInterval(streamIntervalRef.current);
-            streamIntervalRef.current = null;
-
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMsgId
-                  ? { ...msg, content: fullReply, isStreaming: false }
-                  : msg
-              )
-            );
-            setIsStreaming(false);
-            resolve();
-          } else {
-            const partialText = fullReply.slice(0, currentIndex);
-            setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMsgId
-                  ? { ...msg, content: partialText, isStreaming: true }
-                  : msg
-              )
-            );
-          }
-        }, tickInterval);
-      });
-
     } catch (error) {
-      console.error('Failed to query backend:', error);
-      setIsLoading(false);
-      setIsStreaming(false);
-
-      setMessages((prev) => [
-        ...prev,
-        { 
-          id: 'error-' + Date.now(),
-          role: 'assistant', 
-          content: `⚠️ **Connection Notice**\n\nI couldn't reach the backend server.\n\n* **Check Service:** Ensure the backend server is running.\n* **Network status:** Check your connection.\n\nPlease try sending your query again.`,
-          timestamp: new Date()
-        },
-      ]);
+      if (error.name === 'AbortError') {
+        console.log('Query aborted by user');
+      } else {
+        console.error('Failed to query backend:', error);
+        setMessages((prev) => [
+          ...prev,
+          { 
+            id: 'error-' + Date.now(),
+            role: 'assistant', 
+            content: `⚠️ **Connection Notice**\n\nI couldn't reach the backend server.\n\n* **Check Service:** Ensure the backend server is running.\n* **Network status:** Check your connection.\n\nPlease try sending your query again.`,
+            timestamp: new Date()
+          },
+        ]);
+      }
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
+      abortControllerRef.current = null;
     }
   };
 
   const handleClearChat = () => {
-    if (streamIntervalRef.current) {
-      clearInterval(streamIntervalRef.current);
-      streamIntervalRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     setMessages([]);
     setInput('');
+    setActiveMode('smart_assistant');
     setIsLoading(false);
     setIsStreaming(false);
     if (window.innerWidth < 768) {

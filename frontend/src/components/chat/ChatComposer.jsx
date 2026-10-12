@@ -256,8 +256,9 @@ export default function ChatComposer({
               <span>{currentConnector.shortLabel}</span>
               <button
                 type="button"
-                onClick={() => onSelectMode?.('smart_assistant')}
-                className="hover:text-rose-500 dark:hover:text-rose-400 ml-0.5 p-0.5 cursor-pointer"
+                onClick={() => !isGenerating && onSelectMode?.('smart_assistant')}
+                disabled={isGenerating}
+                className="hover:text-rose-500 dark:hover:text-rose-400 ml-0.5 p-0.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Remove connector (Return to Smart Assistant)"
               >
                 <X size={11} />
@@ -291,8 +292,9 @@ export default function ChatComposer({
             <button
               ref={buttonRef}
               type="button"
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+              onClick={() => !isGenerating && setIsMenuOpen(!isMenuOpen)}
+              disabled={isGenerating}
+              className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 isMenuOpen || isCustomConnectorActive
                   ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-semibold'
                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/[0.05]'
